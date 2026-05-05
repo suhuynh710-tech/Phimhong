@@ -6,13 +6,14 @@ import urllib.parse
 import zipfile
 import io
 import os
+from weasyprint import HTML
 
-st.set_page_config(page_title="Phím Hồng Music - PDF", layout="centered")
+st.set_page_config(page_title="Hệ thống tạo Phiếu PDF", layout="centered")
 
 LOGO_PATH = "PHÍM HỒNG MUSIC (Nền trắng).jpg"
 
-st.title("🎯 Hệ thống xuất Phiếu Học Phí (Chỉ PDF)")
-st.write("Tải file Excel để xuất tự động toàn bộ sang PDF, nằm gọn trong 1 file ZIP.")
+st.title("🎯 Hệ thống xuất Phiếu Học Phí (PDF Server-side)")
+st.write("Tạo file PDF độc lập cho từng học sinh, nén vào 1 file ZIP duy nhất.")
 
 uploaded_file = st.file_uploader("📂 Tải file Excel Danh_Sach_Hoc_Phi.xlsx", type=["xlsx"])
 
@@ -26,7 +27,7 @@ if uploaded_file:
     df = pd.read_excel(uploaded_file).dropna(subset=['Họ và Tên'])
     logo_b64 = get_base64_logo()
     
-    st.success(f"Đã nhận danh sách {len(df)} học sinh. Bạn có thể xem trước mẫu phiếu đầu tiên bên dưới!")
+    st.success(f"Đã nhận danh sách {len(df)} học sinh. Đang vẽ file PDF...")
 
     zip_buffer = io.BytesIO()
     
@@ -41,6 +42,7 @@ if uploaded_file:
             bank = str(row['Ngân Hàng']).strip()
             stk = str(row['STK']).split('.')[0] if pd.notna(row['STK']) else ""
 
+            # Xử lý Ngày đi học
             date_cols = [c for c in df.columns if '/' in str(c)]
             days_html = ""
             for col in date_cols:
@@ -66,68 +68,97 @@ if uploaded_file:
                 except: pass
 
             logo_html = f'<img src="{logo_b64}" style="position: absolute; top: 20px; left: 20px; width: 60px; height: 60px; border-radius: 50%; border: 2px solid white; object-fit: cover;">' if logo_b64 else ''
-            qr_html = f'<img src="{qr_b64}" style="width: 110px; height: 110px; border-radius: 10px;">' if qr_b64 else '<div style="font-size:10px; color:#999; padding:20px 0;">NO QR</div>'
+            qr_html = f'<img src="{qr_b64}" style="width: 110px; height: 110px; border-radius: 10px;">' if qr_b64 else '<div style="font-size:10px; color:#999; padding:20px 0;">CHƯA CÓ QR</div>'
 
-            # Mẫu HTML để chèn vào trình duyệt
+            # Giao diện HTML siêu nét để WeasyPrint xuất PDF
             html_template = f"""
-            <div style="width: 450px; margin: 0 auto; background: #fdfaf6; box-shadow: 0 10px 25px rgba(0,0,0,0.2); border-radius: 15px; overflow: hidden; font-family: 'Times New Roman', serif;">
-                <div style="background: linear-gradient(135deg, #bc6c65 0%, #d49a71 100%); color: white; text-align: center; padding: 40px 20px 30px; position: relative;">
-                    {logo_html}
-                    <div style="font-size: 12px; letter-spacing: 2px; font-weight:bold; font-family: Arial, sans-serif;">LỚP NHẠC PHÍM HỒNG</div>
-                    <h1 style="font-size: 32px; margin: 10px 0; letter-spacing: 1px; font-weight: 700; text-transform: uppercase;">PHIẾU HỌC PHÍ</h1>
-                    <div style="margin-bottom: 15px; font-size: 15px; font-family: Arial, sans-serif;">Tháng 5 / 2026</div>
-                    <div style="display: inline-block; background: rgba(255,255,255,0.2); padding: 5px 15px; border-radius: 20px; font-size: 13px; border: 1px solid rgba(255,255,255,0.4); font-weight: bold; font-family: Arial, sans-serif;">{lop} ✨</div>
-                </div>
-                <div style="padding: 25px 35px; font-family: Arial, sans-serif;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px dashed #e2d5c4;">
-                        <div style="display:flex; align-items:center;"><span style="font-size: 20px; margin-right: 10px; width: 30px; display: inline-block;">🎓</span><span style="color: #6d5b4b;">Học sinh</span></div>
-                        <span style="font-weight: 700; color: #2c1a16; font-size: 17px; text-align: right; width: 60%;">{ten}</span>
+            <html>
+            <head>
+            <meta charset="UTF-8">
+            <style>
+                @page {{ size: 450px 1050px; margin: 0; }}
+                body {{ font-family: 'Times New Roman', serif; margin: 0; background: #fdfaf6; color: #333; }}
+                .container {{ width: 450px; height: 1050px; background: #fdfaf6; position: relative; }}
+                .header {{ background: linear-gradient(135deg, #bc6c65 0%, #d49a71 100%); color: white; text-align: center; padding: 40px 20px 30px; position: relative; }}
+                .logo-img {{ position: absolute; top: 20px; left: 20px; width: 60px; height: 60px; border-radius: 50%; border: 2px solid white; object-fit: cover; }}
+                .header h1 {{ font-size: 32px; margin: 10px 0; letter-spacing: 1px; font-weight: 700; text-transform: uppercase; }}
+                .badge {{ display: inline-block; background: rgba(255,255,255,0.2); padding: 5px 15px; border-radius: 20px; font-size: 13px; border: 1px solid rgba(255,255,255,0.4); font-weight: bold; font-family: Arial, sans-serif; }}
+                .content {{ padding: 25px 35px; font-family: Arial, sans-serif; }}
+                .row {{ display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px dashed #e2d5c4; }}
+                .row .icon {{ font-size: 20px; margin-right: 10px; width: 30px; display: inline-block; text-align: center; }}
+                .row .label {{ color: #6d5b4b; font-weight: 400; }}
+                .row .value {{ font-weight: 700; color: #2c1a16; font-size: 17px; text-align: right; width: 60%; }}
+                .total-box {{ border: 2px solid #ecdac8; border-radius: 15px; background: #fcf4e8; text-align: center; padding: 20px; margin: 20px 0; }}
+                .total-box .amount {{ font-size: 34px; color: #4a2e25; font-weight: 700; margin-top: 5px; }}
+                .remark-box {{ border: 1px solid #f2e2b3; background: #fffdf5; border-radius: 12px; padding: 15px; text-align: center; color: #5a4b41; font-style: italic; margin-top: 10px; line-height: 1.5; }}
+                .qr-wrap {{ display: flex; gap: 15px; align-items: center; margin-top: 30px; padding: 15px; border: 1px dashed #d49a71; background: white; border-radius: 15px; }}
+                .stk-val {{ font-size: 18px; color: #bc6c65; font-weight: 700; margin: 3px 0; }}
+                .footer {{ text-align: center; padding: 20px; font-size: 13px; color: #a49688; font-style: italic; }}
+            </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        {logo_html}
+                        <div style="font-size: 12px; letter-spacing: 2px; font-weight:bold; font-family: Arial, sans-serif;">LỚP NHẠC PHÍM HỒNG</div>
+                        <h1>PHIẾU HỌC PHÍ</h1>
+                        <div style="margin-bottom: 15px; font-size: 15px; font-family: Arial, sans-serif;">Tháng 5 / 2026</div>
+                        <div class="badge">{lop} ✨</div>
                     </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px dashed #e2d5c4;">
-                        <div style="display:flex; align-items:center;"><span style="font-size: 20px; margin-right: 10px; width: 30px; display: inline-block;">🧾</span><span style="color: #6d5b4b;">Học phí / buổi</span></div>
-                        <span style="font-weight: 700; color: #2c1a16; font-size: 17px; text-align: right;">{hoc_phi:,} đ</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px 0;">
-                        <div style="display:flex; align-items:center;"><span style="font-size: 20px; margin-right: 10px; width: 30px; display: inline-block;">📅</span><span style="color: #6d5b4b;">Số buổi học</span></div>
-                        <span style="font-weight: 700; color: #2c1a16; font-size: 17px; text-align: right;">{so_buoi} buổi</span>
-                    </div>
-                    <div style="border: 2px solid #ecdac8; border-radius: 15px; background: #fcf4e8; text-align: center; padding: 20px; margin: 20px 0;">
-                        <div style="font-size: 13px; color: #6d5b4b; font-weight: 700;">TỔNG HỌC PHÍ</div>
-                        <div style="font-size: 34px; color: #4a2e25; font-weight: 700; margin-top: 5px;">{tong_tien:,} đ</div>
-                    </div>
-                    <div style="text-align: center; font-size: 12px; color: #8e7f72; font-weight: 700; margin: 20px 0 10px; letter-spacing: 1px;">NGÀY ĐI HỌC</div>
-                    <div style="text-align: center;">{days_html}</div>
-                    <div style="text-align: center; font-size: 12px; color: #8e7f72; font-weight: 700; margin: 30px 0 10px; letter-spacing: 1px;">— NHẬN XÉT —</div>
-                    <div style="border: 1px solid #f2e2b3; background: #fffdf5; border-radius: 12px; padding: 15px; text-align: center; color: #5a4b41; font-style: italic; margin-top: 10px; line-height: 1.5;">{nhan_xet}</div>
-                    <div style="display: flex; gap: 15px; align-items: center; margin-top: 30px; padding: 15px; border: 1px dashed #d49a71; background: white; border-radius: 15px;">
-                        {qr_html}
-                        <div style="text-align:left;">
-                            <div style="color: #d49a71; font-size: 12px; font-weight: 700; margin-bottom: 5px;">MÃ THANH TOÁN</div>
-                            <div style="font-size: 14px; font-weight: 700; color: #4a2e25;">{bank if bank != 'nan' else 'CHƯA CÓ NH'}</div>
-                            <div style="font-size: 18px; color: #bc6c65; font-weight: 700; margin: 3px 0;">{stk if stk != 'nan' else 'CHƯA CÓ STK'}</div>
-                            <div style="font-size: 11px; color: #8e7f72; font-weight:bold;">LỚP NHẠC PHÍM HỒNG</div>
+                    <div class="content">
+                        <div class="row">
+                            <div style="display:flex; align-items:center;"><span class="icon">🎓</span><span class="label">Học sinh</span></div>
+                            <span class="value">{ten}</span>
+                        </div>
+                        <div class="row">
+                            <div style="display:flex; align-items:center;"><span class="icon">🧾</span><span class="label">Học phí / buổi</span></div>
+                            <span class="value">{hoc_phi:,} đ</span>
+                        </div>
+                        <div class="row">
+                            <div style="display:flex; align-items:center;"><span class="icon">📅</span><span class="label">Số buổi học</span></div>
+                            <span class="value">{so_buoi} buổi</span>
+                        </div>
+                        <div class="total-box">
+                            <div style="font-size: 13px; color: #6d5b4b; font-weight: 700;">TỔNG HỌC PHÍ</div>
+                            <div class="amount">{tong_tien:,} đ</div>
+                        </div>
+                        <div style="text-align: center; font-size: 12px; color: #8e7f72; font-weight: 700; margin: 20px 0 10px; letter-spacing: 1px;">NGÀY ĐI HỌC</div>
+                        <div style="text-align: center;">{days_html}</div>
+                        <div style="text-align: center; font-size: 12px; color: #8e7f72; font-weight: 700; margin: 30px 0 10px; letter-spacing: 1px;">— NHẬN XÉT —</div>
+                        <div class="remark-box">{nhan_xet}</div>
+                        <div class="qr-wrap">
+                            {qr_html}
+                            <div style="text-align:left;">
+                                <div style="color: #d49a71; font-size: 12px; font-weight: 700; margin-bottom: 5px;">MÃ THANH TOÁN</div>
+                                <div style="font-size: 14px; font-weight: 700; color: #4a2e25;">{bank if bank != 'nan' else 'CHƯA CÓ NH'}</div>
+                                <div class="stk-val">{stk if stk != 'nan' else 'CHƯA CÓ STK'}</div>
+                                <div style="font-size: 11px; color: #8e7f72; font-weight:bold;">LỚP NHẠC PHÍM HỒNG</div>
+                            </div>
                         </div>
                     </div>
+                    <div class="footer">🎩 Trân trọng cảm ơn quý phụ huynh!</div>
                 </div>
-                <div style="text-align: center; padding: 20px; font-size: 13px; color: #a49688; font-style: italic; font-family: Arial, sans-serif;">🎩 Trân trọng cảm ơn quý phụ huynh!</div>
-            </div>
+            </body>
+            </html>
             """
 
-            # Code ép tạo ra file PDF thật
-            full_html = f"<!DOCTYPE html><html><head><meta charset='utf-8'></head><body style='padding:50px;'>{html_template}</body><script>window.print();</script></html>"
-            
-            safe_name = ten.replace(' ', '_').replace('(', '').replace(')', '')
-            
-            # Gói HTML vào ZIP. Bạn mở file lên Chrome/Cốc Cốc nó sẽ TỰ ĐỘNG BẬT in ra PDF. Cực chuẩn.
-            zip_file.writestr(f"Phieu_Hoc_Phi_{safe_name}.html", full_html.encode('utf-8'))
+            # Lệnh xuất trực tiếp HTML sang PDF bằng WeasyPrint
+            try:
+                pdf_bytes = HTML(string=html_template).write_pdf()
+                safe_name = ten.replace(' ', '_').replace('(', '').replace(')', '')
+                zip_file.writestr(f"Phieu_Hoc_Phi_{safe_name}.pdf", pdf_bytes)
+            except Exception as e:
+                st.error(f"Lỗi hệ thống khi tạo PDF cho bé {ten}: {e}")
 
+            # Hiển thị demo người đầu tiên lên web
             if index == 0:
                 st.markdown(html_template.replace('\n', ''), unsafe_allow_html=True)
                 st.divider()
 
+    st.success("🎉 Tạo thành công toàn bộ file PDF!")
     st.download_button(
-        label="⬇️ TẢI TOÀN BỘ PHIẾU (.ZIP)",
+        label="⬇️ TẢI XUỐNG FILE ZIP (CHỨA CÁC FILE PDF)",
         data=zip_buffer.getvalue(),
-        file_name="Phieu_Hoc_Phi_Tong_Hop.zip",
+        file_name="Danh_Sach_Phieu_PDF.zip",
         mime="application/zip"
     )
