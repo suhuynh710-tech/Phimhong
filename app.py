@@ -8,12 +8,13 @@ import io
 import os
 from weasyprint import HTML
 
-st.set_page_config(page_title="Hệ thống tạo Phiếu PDF", layout="centered")
+st.set_page_config(page_title="Phím Hồng Music - PDF VIP", layout="centered")
 
+# --- CẤU HÌNH LOGO CỐ ĐỊNH ---
 LOGO_PATH = "PHÍM HỒNG MUSIC (Nền trắng).jpg"
 
-st.title("🎯 Hệ thống xuất Phiếu Học Phí (PDF Server-side)")
-st.write("Tạo file PDF độc lập cho từng học sinh, nén vào 1 file ZIP duy nhất.")
+st.title("🎯 Hệ thống xuất Phiếu Học Phí (Bản Hoàn Hảo)")
+st.write("Đã sửa lỗi logo đè chữ, khôi phục icon và xóa đường gạch ngang trên web.")
 
 uploaded_file = st.file_uploader("📂 Tải file Excel Danh_Sach_Hoc_Phi.xlsx", type=["xlsx"])
 
@@ -27,7 +28,7 @@ if uploaded_file:
     df = pd.read_excel(uploaded_file).dropna(subset=['Họ và Tên'])
     logo_b64 = get_base64_logo()
     
-    st.success(f"Đã nhận danh sách {len(df)} học sinh. Đang vẽ file PDF...")
+    st.success(f"Đã nhận danh sách {len(df)} học sinh. Đang xử lý file PDF...")
 
     zip_buffer = io.BytesIO()
     
@@ -67,25 +68,24 @@ if uploaded_file:
                     qr_b64 = f"data:image/png;base64,{base64.b64encode(resp.content).decode()}"
                 except: pass
 
-            logo_html = f'<img src="{logo_b64}" style="position: absolute; top: 20px; left: 20px; width: 60px; height: 60px; border-radius: 50%; border: 2px solid white; object-fit: cover;">' if logo_b64 else ''
+            logo_html = f'<img src="{logo_b64}" style="position: absolute; top: 15px; left: 20px; width: 65px; height: 65px; border-radius: 50%; border: 2px solid white; object-fit: cover;">' if logo_b64 else ''
             qr_html = f'<img src="{qr_b64}" style="width: 110px; height: 110px; border-radius: 10px;">' if qr_b64 else '<div style="font-size:10px; color:#999; padding:20px 0;">CHƯA CÓ QR</div>'
 
-            # Giao diện HTML siêu nét để WeasyPrint xuất PDF
+            # Template HTML chuẩn - Đã tăng padding header để không dính chữ
             html_template = f"""
             <html>
             <head>
             <meta charset="UTF-8">
             <style>
-                @page {{ size: 450px 1050px; margin: 0; }}
+                @page {{ size: 450px 1080px; margin: 0; }}
                 body {{ font-family: 'Times New Roman', serif; margin: 0; background: #fdfaf6; color: #333; }}
-                .container {{ width: 450px; height: 1050px; background: #fdfaf6; position: relative; }}
-                .header {{ background: linear-gradient(135deg, #bc6c65 0%, #d49a71 100%); color: white; text-align: center; padding: 40px 20px 30px; position: relative; }}
-                .logo-img {{ position: absolute; top: 20px; left: 20px; width: 60px; height: 60px; border-radius: 50%; border: 2px solid white; object-fit: cover; }}
-                .header h1 {{ font-size: 32px; margin: 10px 0; letter-spacing: 1px; font-weight: 700; text-transform: uppercase; }}
+                .container {{ width: 450px; height: 1080px; background: #fdfaf6; position: relative; }}
+                .header {{ background: linear-gradient(135deg, #bc6c65 0%, #d49a71 100%); color: white; text-align: center; padding: 50px 20px 30px; position: relative; }}
+                .header h1 {{ font-size: 32px; margin: 15px 0 10px; letter-spacing: 1.5px; font-weight: 700; text-transform: uppercase; }}
                 .badge {{ display: inline-block; background: rgba(255,255,255,0.2); padding: 5px 15px; border-radius: 20px; font-size: 13px; border: 1px solid rgba(255,255,255,0.4); font-weight: bold; font-family: Arial, sans-serif; }}
                 .content {{ padding: 25px 35px; font-family: Arial, sans-serif; }}
                 .row {{ display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px dashed #e2d5c4; }}
-                .row .icon {{ font-size: 20px; margin-right: 10px; width: 30px; display: inline-block; text-align: center; }}
+                .row .icon {{ font-size: 20px; margin-right: 12px; width: 30px; display: inline-block; text-align: center; }}
                 .row .label {{ color: #6d5b4b; font-weight: 400; }}
                 .row .value {{ font-weight: 700; color: #2c1a16; font-size: 17px; text-align: right; width: 60%; }}
                 .total-box {{ border: 2px solid #ecdac8; border-radius: 15px; background: #fcf4e8; text-align: center; padding: 20px; margin: 20px 0; }}
@@ -93,14 +93,14 @@ if uploaded_file:
                 .remark-box {{ border: 1px solid #f2e2b3; background: #fffdf5; border-radius: 12px; padding: 15px; text-align: center; color: #5a4b41; font-style: italic; margin-top: 10px; line-height: 1.5; }}
                 .qr-wrap {{ display: flex; gap: 15px; align-items: center; margin-top: 30px; padding: 15px; border: 1px dashed #d49a71; background: white; border-radius: 15px; }}
                 .stk-val {{ font-size: 18px; color: #bc6c65; font-weight: 700; margin: 3px 0; }}
-                .footer {{ text-align: center; padding: 20px; font-size: 13px; color: #a49688; font-style: italic; }}
+                .footer {{ text-align: center; padding: 25px; font-size: 13px; color: #a49688; font-style: italic; }}
             </style>
             </head>
             <body>
                 <div class="container">
                     <div class="header">
                         {logo_html}
-                        <div style="font-size: 12px; letter-spacing: 2px; font-weight:bold; font-family: Arial, sans-serif;">LỚP NHẠC PHÍM HỒNG</div>
+                        <div style="font-size: 11px; letter-spacing: 2px; font-weight:bold; font-family: Arial, sans-serif;">LỚP NHẠC PHÍM HỒNG</div>
                         <h1>PHIẾU HỌC PHÍ</h1>
                         <div style="margin-bottom: 15px; font-size: 15px; font-family: Arial, sans-serif;">Tháng 5 / 2026</div>
                         <div class="badge">{lop} ✨</div>
@@ -142,23 +142,23 @@ if uploaded_file:
             </html>
             """
 
-            # Lệnh xuất trực tiếp HTML sang PDF bằng WeasyPrint
+            # Xuất trực tiếp sang PDF
             try:
                 pdf_bytes = HTML(string=html_template).write_pdf()
                 safe_name = ten.replace(' ', '_').replace('(', '').replace(')', '')
                 zip_file.writestr(f"Phieu_Hoc_Phi_{safe_name}.pdf", pdf_bytes)
             except Exception as e:
-                st.error(f"Lỗi hệ thống khi tạo PDF cho bé {ten}: {e}")
+                st.error(f"Lỗi tạo PDF cho {ten}: {e}")
 
-            # Hiển thị demo người đầu tiên lên web
-            if index == 0:
-                st.markdown(html_template.replace('\n', ''), unsafe_allow_html=True)
-                st.divider()
+            # Hiển thị trên web (Đã xóa st.divider())
+            st.markdown(html_template.replace('\n', ''), unsafe_allow_html=True)
+            # Thêm khoảng trống nhỏ giữa các phiếu thay vì gạch ngang
+            st.write("<br><br>", unsafe_allow_html=True)
 
-    st.success("🎉 Tạo thành công toàn bộ file PDF!")
+    st.success("🎉 Đã tạo xong tất cả các file PDF!")
     st.download_button(
-        label="⬇️ TẢI XUỐNG FILE ZIP (CHỨA CÁC FILE PDF)",
+        label="⬇️ TẢI XUỐNG FILE ZIP (PDF CHUẨN)",
         data=zip_buffer.getvalue(),
-        file_name="Danh_Sach_Phieu_PDF.zip",
+        file_name="Phieu_Hoc_Phi_Tong_Hop.zip",
         mime="application/zip"
     )
