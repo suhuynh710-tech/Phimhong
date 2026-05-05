@@ -13,8 +13,8 @@ st.set_page_config(page_title="Phím Hồng Music - PDF VIP", layout="centered")
 # --- CẤU HÌNH LOGO CỐ ĐỊNH ---
 LOGO_PATH = "PHÍM HỒNG MUSIC (Nền trắng).jpg"
 
-st.title("🎯 Hệ thống xuất Phiếu Học Phí (Bản Hoàn Hảo)")
-st.write("Đã sửa lỗi logo đè chữ, khôi phục icon và xóa đường gạch ngang trên web.")
+st.title("🎯 Hệ thống xuất Phiếu Học Phí (Bản Hoàn Hảo Nhất)")
+st.write("Đã sửa lỗi ô vuông icon bằng công nghệ SVG, logo đặt chính giữa bo tròn 100% không đè chữ.")
 
 uploaded_file = st.file_uploader("📂 Tải file Excel Danh_Sach_Hoc_Phi.xlsx", type=["xlsx"])
 
@@ -23,6 +23,11 @@ def get_base64_logo():
         with open(LOGO_PATH, "rb") as f:
             return f"data:image/jpeg;base64,{base64.b64encode(f.read()).decode()}"
     return ""
+
+# Định nghĩa Icon bằng Code Vector SVG (Đảm bảo 100% không bị lỗi ô vuông)
+icon_student = '''<svg viewBox="0 0 24 24" width="22" height="22" fill="#6d5b4b"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2.06-1.12V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>'''
+icon_receipt = '''<svg viewBox="0 0 24 24" width="22" height="22" fill="#6d5b4b"><path d="M18 17H6v-2h12v2zm0-4H6v-2h12v2zm0-4H6V7h12v2zM3 22l1.5-1.5L6 22l1.5-1.5L9 22l1.5-1.5L12 22l1.5-1.5L15 22l1.5-1.5L18 22l1.5-1.5L21 22V2l-1.5 1.5L18 2l-1.5 1.5L15 2l-1.5 1.5L12 2l-1.5 1.5L9 2l-1.5 1.5L6 2 4.5 3.5 3 2v20z"/></svg>'''
+icon_calendar = '''<svg viewBox="0 0 24 24" width="22" height="22" fill="#6d5b4b"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 002 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/></svg>'''
 
 if uploaded_file:
     df = pd.read_excel(uploaded_file).dropna(subset=['Họ và Tên'])
@@ -43,7 +48,6 @@ if uploaded_file:
             bank = str(row['Ngân Hàng']).strip()
             stk = str(row['STK']).split('.')[0] if pd.notna(row['STK']) else ""
 
-            # Xử lý Ngày đi học
             date_cols = [c for c in df.columns if '/' in str(c)]
             days_html = ""
             for col in date_cols:
@@ -58,7 +62,6 @@ if uploaded_file:
             if not days_html:
                 days_html = '<span style="color:#aaa; font-style:italic; font-size:13px;">Chưa có buổi học</span>'
 
-            # QR Code
             qr_b64 = ""
             if bank and stk and bank != 'nan':
                 add_info = urllib.parse.quote(ten)
@@ -68,10 +71,10 @@ if uploaded_file:
                     qr_b64 = f"data:image/png;base64,{base64.b64encode(resp.content).decode()}"
                 except: pass
 
-            logo_html = f'<img src="{logo_b64}" style="position: absolute; top: 15px; left: 20px; width: 65px; height: 65px; border-radius: 50%; border: 2px solid white; object-fit: cover;">' if logo_b64 else ''
+            # Logo được đưa ra CHÍNH GIỮA bằng thuộc tính margin: 0 auto
+            logo_html = f'<div style="margin: 0 auto 10px auto; width: 65px; height: 65px; border-radius: 50%; border: 2px solid white; background-image: url({logo_b64}); background-size: cover; background-position: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1);"></div>' if logo_b64 else ''
             qr_html = f'<img src="{qr_b64}" style="width: 110px; height: 110px; border-radius: 10px;">' if qr_b64 else '<div style="font-size:10px; color:#999; padding:20px 0;">CHƯA CÓ QR</div>'
 
-            # Template HTML chuẩn - Đã tăng padding header để không dính chữ
             html_template = f"""
             <html>
             <head>
@@ -80,12 +83,12 @@ if uploaded_file:
                 @page {{ size: 450px 1080px; margin: 0; }}
                 body {{ font-family: 'Times New Roman', serif; margin: 0; background: #fdfaf6; color: #333; }}
                 .container {{ width: 450px; height: 1080px; background: #fdfaf6; position: relative; }}
-                .header {{ background: linear-gradient(135deg, #bc6c65 0%, #d49a71 100%); color: white; text-align: center; padding: 50px 20px 30px; position: relative; }}
-                .header h1 {{ font-size: 32px; margin: 15px 0 10px; letter-spacing: 1.5px; font-weight: 700; text-transform: uppercase; }}
+                .header {{ background: linear-gradient(135deg, #bc6c65 0%, #d49a71 100%); color: white; text-align: center; padding: 40px 20px 30px; position: relative; }}
+                .header h1 {{ font-size: 32px; margin: 10px 0; letter-spacing: 1.5px; font-weight: 700; text-transform: uppercase; }}
                 .badge {{ display: inline-block; background: rgba(255,255,255,0.2); padding: 5px 15px; border-radius: 20px; font-size: 13px; border: 1px solid rgba(255,255,255,0.4); font-weight: bold; font-family: Arial, sans-serif; }}
                 .content {{ padding: 25px 35px; font-family: Arial, sans-serif; }}
                 .row {{ display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px dashed #e2d5c4; }}
-                .row .icon {{ font-size: 20px; margin-right: 12px; width: 30px; display: inline-block; text-align: center; }}
+                .row .icon {{ margin-right: 12px; width: 25px; display: inline-flex; justify-content: center; align-items: center; }}
                 .row .label {{ color: #6d5b4b; font-weight: 400; }}
                 .row .value {{ font-weight: 700; color: #2c1a16; font-size: 17px; text-align: right; width: 60%; }}
                 .total-box {{ border: 2px solid #ecdac8; border-radius: 15px; background: #fcf4e8; text-align: center; padding: 20px; margin: 20px 0; }}
@@ -107,15 +110,15 @@ if uploaded_file:
                     </div>
                     <div class="content">
                         <div class="row">
-                            <div style="display:flex; align-items:center;"><span class="icon">🎓</span><span class="label">Học sinh</span></div>
+                            <div style="display:flex; align-items:center;"><span class="icon">{icon_student}</span><span class="label">Học sinh</span></div>
                             <span class="value">{ten}</span>
                         </div>
                         <div class="row">
-                            <div style="display:flex; align-items:center;"><span class="icon">🧾</span><span class="label">Học phí / buổi</span></div>
+                            <div style="display:flex; align-items:center;"><span class="icon">{icon_receipt}</span><span class="label">Học phí / buổi</span></div>
                             <span class="value">{hoc_phi:,} đ</span>
                         </div>
                         <div class="row">
-                            <div style="display:flex; align-items:center;"><span class="icon">📅</span><span class="label">Số buổi học</span></div>
+                            <div style="display:flex; align-items:center;"><span class="icon">{icon_calendar}</span><span class="label">Số buổi học</span></div>
                             <span class="value">{so_buoi} buổi</span>
                         </div>
                         <div class="total-box">
@@ -136,13 +139,12 @@ if uploaded_file:
                             </div>
                         </div>
                     </div>
-                    <div class="footer">🎩 Trân trọng cảm ơn quý phụ huynh!</div>
+                    <div class="footer">Trân trọng cảm ơn quý phụ huynh!</div>
                 </div>
             </body>
             </html>
             """
 
-            # Xuất trực tiếp sang PDF
             try:
                 pdf_bytes = HTML(string=html_template).write_pdf()
                 safe_name = ten.replace(' ', '_').replace('(', '').replace(')', '')
@@ -150,10 +152,9 @@ if uploaded_file:
             except Exception as e:
                 st.error(f"Lỗi tạo PDF cho {ten}: {e}")
 
-            # Hiển thị trên web (Đã xóa st.divider())
-            st.markdown(html_template.replace('\n', ''), unsafe_allow_html=True)
-            # Thêm khoảng trống nhỏ giữa các phiếu thay vì gạch ngang
-            st.write("<br><br>", unsafe_allow_html=True)
+            if index == 0:
+                st.markdown(html_template.replace('\n', ''), unsafe_allow_html=True)
+                st.write("<br><br>", unsafe_allow_html=True)
 
     st.success("🎉 Đã tạo xong tất cả các file PDF!")
     st.download_button(
