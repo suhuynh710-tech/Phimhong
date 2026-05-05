@@ -12,8 +12,8 @@ st.set_page_config(page_title="Phím Hồng Music - PDF VIP", layout="centered")
 
 LOGO_PATH = "PHÍM HỒNG MUSIC (Nền trắng).jpg"
 
-st.title("🎯 Hệ thống xuất Phiếu Học Phí (Bản Tốc Độ Tối Đa)")
-st.write("Đã gắn thanh tiến trình và tính năng chống treo máy (Anti-hang).")
+st.title("🎯 Hệ thống xuất Phiếu Học Phí (Bản Chuẩn Cuối Cùng)")
+st.write("Đã tổng hợp: Kích thước to chống rớt trang, Thanh tiến trình chống treo, Icon chuẩn và Xóa lỗi web.")
 
 uploaded_file = st.file_uploader("📂 Tải file Excel Danh_Sach_Hoc_Phi.xlsx", type=["xlsx"])
 
@@ -23,19 +23,20 @@ def get_base64_logo():
             return f"data:image/jpeg;base64,{base64.b64encode(f.read()).decode()}"
     return ""
 
-icon_student = '''<svg viewBox="0 0 24 24" width="22" height="22" fill="#6d5b4b" style="margin-right:12px;"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2.06-1.12V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>'''
-icon_receipt = '''<svg viewBox="0 0 24 24" width="20" height="20" fill="#6d5b4b" style="margin-right:12px;"><path d="M18 17H6v-2h12v2zm0-4H6v-2h12v2zm0-4H6V7h12v2zM3 22l1.5-1.5L6 22l1.5-1.5L9 22l1.5-1.5L12 22l1.5-1.5L15 22l1.5-1.5L18 22l1.5-1.5L21 22V2l-1.5 1.5L18 2l-1.5 1.5L15 2l-1.5 1.5L12 2l-1.5 1.5L9 2l-1.5 1.5L6 2 4.5 3.5 3 2v20z"/></svg>'''
-icon_calendar = '''<svg viewBox="0 0 24 24" width="20" height="20" fill="#6d5b4b" style="margin-right:12px;"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 002 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/></svg>'''
+# Định nghĩa các Icon SVG chuyên nghiệp
+icon_student = '''<svg viewBox="0 0 24 24" width="24" height="24" fill="#6d5b4b" style="margin-right:12px;"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2.06-1.12V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>'''
+icon_receipt = '''<svg viewBox="0 0 24 24" width="22" height="22" fill="#6d5b4b" style="margin-right:12px;"><path d="M18 17H6v-2h12v2zm0-4H6v-2h12v2zm0-4H6V7h12v2zM3 22l1.5-1.5L6 22l1.5-1.5L9 22l1.5-1.5L12 22l1.5-1.5L15 22l1.5-1.5L18 22l1.5-1.5L21 22V2l-1.5 1.5L18 2l-1.5 1.5L15 2l-1.5 1.5L12 2l-1.5 1.5L9 2l-1.5 1.5L6 2 4.5 3.5 3 2v20z"/></svg>'''
+icon_calendar = '''<svg viewBox="0 0 24 24" width="22" height="22" fill="#6d5b4b" style="margin-right:12px;"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 002 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/></svg>'''
 
 if uploaded_file:
     df = pd.read_excel(uploaded_file).dropna(subset=['Họ và Tên'])
     logo_b64 = get_base64_logo()
     
-    st.success(f"Đã nhận danh sách {len(df)} học sinh. Bắt đầu xử lý...")
+    st.success(f"Đã nhận danh sách {len(df)} học sinh. Hệ thống đang vẽ PDF...")
 
     zip_buffer = io.BytesIO()
     
-    # Tạo thanh tiến trình
+    # Thanh tiến trình
     progress_bar = st.progress(0)
     status_text = st.empty()
     total_students = len(df)
@@ -44,8 +45,8 @@ if uploaded_file:
         for index, row in df.iterrows():
             ten = str(row['Họ và Tên']).strip()
             
-            # Cập nhật thanh tiến trình
-            status_text.text(f"Đang vẽ PDF cho bé: {ten} ({index + 1}/{total_students})...")
+            # Chống treo máy bằng cách báo cáo tiến độ liên tục
+            status_text.text(f"Đang xử lý: {ten} ({index + 1}/{total_students})...")
             progress_bar.progress((index + 1) / total_students)
             
             lop = str(row['Lớp']).strip() if pd.notna(row['Lớp']) else "Năng Khiếu"
@@ -70,20 +71,20 @@ if uploaded_file:
             if not days_html:
                 days_html = '<span style="color:#aaa; font-style:italic; font-size:14px;">Chưa có buổi học</span>'
 
-            # Thêm Timeout chống treo máy cho VietQR
+            # QR Code có Timeout (3 giây) chống đứng máy
             qr_b64 = ""
             if bank and stk and bank != 'nan':
                 add_info = urllib.parse.quote(ten)
                 qr_url = f"https://img.vietqr.io/image/{bank}-{stk}-compact2.png?amount={tong_tien}&addInfo={add_info}"
                 try:
-                    resp = requests.get(qr_url, timeout=3) # Ép tải nhanh trong 3 giây, chậm thì bỏ qua
+                    resp = requests.get(qr_url, timeout=3)
                     if resp.status_code == 200:
                         qr_b64 = f"data:image/png;base64,{base64.b64encode(resp.content).decode()}"
                 except: 
                     pass
 
             logo_html = f'<div style="margin: 0 auto 15px auto; width: 80px; height: 80px; border-radius: 50%; border: 2px solid white; background-image: url({logo_b64}); background-size: cover; background-position: center; box-shadow: 0 2px 10px rgba(0,0,0,0.15);"></div>' if logo_b64 else ''
-            qr_html = f'<img src="{qr_b64}" style="width: 120px; height: 120px; border-radius: 10px;">' if qr_b64 else '<div style="font-size:10px; color:#999;">CHƯA CÓ QR</div>'
+            qr_html = f'<img src="{qr_b64}" style="width: 120px; height: 120px; border-radius: 10px;">' if qr_b64 else '<div style="font-size:10px; color:#999; padding:30px 0;">CHƯA CÓ QR</div>'
 
             html_template = f"""
             <html>
@@ -119,7 +120,7 @@ if uploaded_file:
                     </div>
                     <div class="content">
                         <div class="row">
-                            <span class="label">Học sinh</span>
+                            <div style="display:flex; align-items:center;">{icon_student}<span class="label">Học sinh</span></div>
                             <span class="value">{ten}</span>
                         </div>
                         <div class="row">
@@ -162,10 +163,11 @@ if uploaded_file:
                 st.error(f"Lỗi tạo PDF cho {ten}: {e}")
 
             if index == 0:
-                st.markdown(html_template.replace('\n', ''), unsafe_allow_html=True)
-                st.write("<div style='height:50px'></div>", unsafe_allow_html=True)
-                
-    status_text.text("🎉 Hoàn tất! Đã xử lý xong toàn bộ danh sách.")
+                # Ép chặt nội dung, không để dư khoảng trắng xuống dòng gây lỗi trên Web
+                clean_html = html_template.replace('\n', '').replace('  ', '')
+                st.markdown(clean_html, unsafe_allow_html=True)
+
+    status_text.text("🎉 Hoàn tất! Đã xử lý xong toàn bộ danh sách. Mời bạn tải ZIP.")
     
     st.download_button(
         label="⬇️ TẢI XUỐNG FILE ZIP (PDF CHUẨN)",
