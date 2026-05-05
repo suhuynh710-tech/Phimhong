@@ -10,11 +10,10 @@ from weasyprint import HTML
 
 st.set_page_config(page_title="Phím Hồng Music - PDF VIP", layout="centered")
 
-# --- CẤU HÌNH LOGO CỐ ĐỊNH ---
 LOGO_PATH = "PHÍM HỒNG MUSIC (Nền trắng).jpg"
 
-st.title("🎯 Hệ thống xuất Phiếu Học Phí (Bản Cân Đối)")
-st.write("Đã nới rộng chiều ngang, tăng chiều cao để đảm bảo 100% không bị nhảy sang trang 2.")
+st.title("🎯 Hệ thống xuất Phiếu Học Phí (Bản Tốc Độ Tối Đa)")
+st.write("Đã gắn thanh tiến trình và tính năng chống treo máy (Anti-hang).")
 
 uploaded_file = st.file_uploader("📂 Tải file Excel Danh_Sach_Hoc_Phi.xlsx", type=["xlsx"])
 
@@ -24,7 +23,6 @@ def get_base64_logo():
             return f"data:image/jpeg;base64,{base64.b64encode(f.read()).decode()}"
     return ""
 
-# Định nghĩa các Icon SVG chuyên nghiệp
 icon_student = '''<svg viewBox="0 0 24 24" width="22" height="22" fill="#6d5b4b" style="margin-right:12px;"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2.06-1.12V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>'''
 icon_receipt = '''<svg viewBox="0 0 24 24" width="20" height="20" fill="#6d5b4b" style="margin-right:12px;"><path d="M18 17H6v-2h12v2zm0-4H6v-2h12v2zm0-4H6V7h12v2zM3 22l1.5-1.5L6 22l1.5-1.5L9 22l1.5-1.5L12 22l1.5-1.5L15 22l1.5-1.5L18 22l1.5-1.5L21 22V2l-1.5 1.5L18 2l-1.5 1.5L15 2l-1.5 1.5L12 2l-1.5 1.5L9 2l-1.5 1.5L6 2 4.5 3.5 3 2v20z"/></svg>'''
 icon_calendar = '''<svg viewBox="0 0 24 24" width="20" height="20" fill="#6d5b4b" style="margin-right:12px;"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 002 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/></svg>'''
@@ -33,13 +31,23 @@ if uploaded_file:
     df = pd.read_excel(uploaded_file).dropna(subset=['Họ và Tên'])
     logo_b64 = get_base64_logo()
     
-    st.success(f"Đã nhận danh sách {len(df)} học sinh. Đang xử lý...")
+    st.success(f"Đã nhận danh sách {len(df)} học sinh. Bắt đầu xử lý...")
 
     zip_buffer = io.BytesIO()
+    
+    # Tạo thanh tiến trình
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+    total_students = len(df)
     
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
         for index, row in df.iterrows():
             ten = str(row['Họ và Tên']).strip()
+            
+            # Cập nhật thanh tiến trình
+            status_text.text(f"Đang vẽ PDF cho bé: {ten} ({index + 1}/{total_students})...")
+            progress_bar.progress((index + 1) / total_students)
+            
             lop = str(row['Lớp']).strip() if pd.notna(row['Lớp']) else "Năng Khiếu"
             hoc_phi = int(row['Học Phí (buổi)']) if pd.notna(row['Học Phí (buổi)']) else 0
             so_buoi = int(row['Tổng buổi học']) if pd.notna(row['Tổng buổi học']) else 0
@@ -48,7 +56,6 @@ if uploaded_file:
             bank = str(row['Ngân Hàng']).strip()
             stk = str(row['STK']).split('.')[0] if pd.notna(row['STK']) else ""
 
-            # Xử lý Ngày đi học
             date_cols = [c for c in df.columns if '/' in str(c)]
             days_html = ""
             for col in date_cols:
@@ -63,20 +70,21 @@ if uploaded_file:
             if not days_html:
                 days_html = '<span style="color:#aaa; font-style:italic; font-size:14px;">Chưa có buổi học</span>'
 
-            # QR Code
+            # Thêm Timeout chống treo máy cho VietQR
             qr_b64 = ""
             if bank and stk and bank != 'nan':
                 add_info = urllib.parse.quote(ten)
                 qr_url = f"https://img.vietqr.io/image/{bank}-{stk}-compact2.png?amount={tong_tien}&addInfo={add_info}"
                 try:
-                    resp = requests.get(qr_url)
-                    qr_b64 = f"data:image/png;base64,{base64.b64encode(resp.content).decode()}"
-                except: pass
+                    resp = requests.get(qr_url, timeout=3) # Ép tải nhanh trong 3 giây, chậm thì bỏ qua
+                    if resp.status_code == 200:
+                        qr_b64 = f"data:image/png;base64,{base64.b64encode(resp.content).decode()}"
+                except: 
+                    pass
 
             logo_html = f'<div style="margin: 0 auto 15px auto; width: 80px; height: 80px; border-radius: 50%; border: 2px solid white; background-image: url({logo_b64}); background-size: cover; background-position: center; box-shadow: 0 2px 10px rgba(0,0,0,0.15);"></div>' if logo_b64 else ''
             qr_html = f'<img src="{qr_b64}" style="width: 120px; height: 120px; border-radius: 10px;">' if qr_b64 else '<div style="font-size:10px; color:#999;">CHƯA CÓ QR</div>'
 
-            # Nới rộng kích thước (550px x 1250px)
             html_template = f"""
             <html>
             <head>
@@ -111,7 +119,7 @@ if uploaded_file:
                     </div>
                     <div class="content">
                         <div class="row">
-                            <div style="display:flex; align-items:center;">{icon_student}<span class="label">Học sinh</span></div>
+                            <span class="label">Học sinh</span>
                             <span class="value">{ten}</span>
                         </div>
                         <div class="row">
@@ -153,11 +161,12 @@ if uploaded_file:
             except Exception as e:
                 st.error(f"Lỗi tạo PDF cho {ten}: {e}")
 
-            # Hiển thị demo người đầu tiên lên web
             if index == 0:
                 st.markdown(html_template.replace('\n', ''), unsafe_allow_html=True)
                 st.write("<div style='height:50px'></div>", unsafe_allow_html=True)
-
+                
+    status_text.text("🎉 Hoàn tất! Đã xử lý xong toàn bộ danh sách.")
+    
     st.download_button(
         label="⬇️ TẢI XUỐNG FILE ZIP (PDF CHUẨN)",
         data=zip_buffer.getvalue(),
