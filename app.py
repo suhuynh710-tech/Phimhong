@@ -157,3 +157,10 @@ if uploaded_file:
             if index == 0:
                 st.markdown(html_template.replace('\n', ''), unsafe_allow_html=True)
                 st.write("<div style='height:50px'></div>", unsafe_allow_html=True)
+
+    st.download_button(
+        label="⬇️ TẢI XUỐNG FILE ZIP (PDF CHUẨN)",
+        data=zip_buffer.getvalue(),
+        file_name="Phieu_Hoc_Phi_Full.zip",
+        mime="application/zip"
+    )
