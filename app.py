@@ -7,12 +7,12 @@ import zipfile
 import io
 import os
 
-st.set_page_config(page_title="Phím Hồng Music - HTML", layout="centered")
+st.set_page_config(page_title="Phím Hồng Music - Phiếu Học Phí A4", layout="wide")
 
 LOGO_PATH = "PHÍM HỒNG MUSIC (Nền trắng).jpg"
 
-st.title("✨ Hệ thống xuất Phiếu Học Phí (Bản HTML Siêu Nét)")
-st.write("Đã khôi phục icon 🎓, logo chính giữa, xuất HTML chống rớt trang 100%.")
+st.title("🎯 Hệ thống xuất Phiếu Học Phí (Bố Cục A4 Mới)")
+st.write("Phiên bản chia cột ngang giúp phiếu không bị dài thòng. Tích hợp tự động mục 'Tiền phát sinh'.")
 
 uploaded_file = st.file_uploader("📂 Tải file Excel Danh_Sach_Hoc_Phi.xlsx", type=["xlsx"])
 
@@ -40,12 +40,35 @@ if uploaded_file:
             lop = str(row['Lớp']).strip() if pd.notna(row['Lớp']) else "Năng Khiếu"
             hoc_phi = int(row['Học Phí (buổi)']) if pd.notna(row['Học Phí (buổi)']) else 0
             so_buoi = int(row['Tổng buổi học']) if pd.notna(row['Tổng buổi học']) else 0
-            tong_tien = int(row['Tổng học phí']) if pd.notna(row['Tổng học phí']) else 0
+            
+            # Lấy Tổng học phí gốc từ Excel
+            tong_tien_goc = int(row['Tổng học phí']) if pd.notna(row['Tổng học phí']) else (hoc_phi * so_buoi)
+            
+            # --- TÍNH NĂNG: TIỀN PHÁT SINH ---
+            tien_phat_sinh = 0
+            phat_sinh_html = ""
+            if 'Tiền phát sinh' in df.columns:
+                val = row['Tiền phát sinh']
+                if pd.notna(val) and str(val).strip() != '':
+                    try:
+                        tien_phat_sinh = int(float(val))
+                        if tien_phat_sinh > 0:
+                            phat_sinh_html = f'''
+                            <tr>
+                                <td style="padding: 15px 0; color: #7a6b5d; border-top: 1px dashed #e2d5c4;">Phí phát sinh (Giáo trình/Sự kiện):</td>
+                                <td style="padding: 15px 0; font-weight: bold; color: #bc6c65; text-align: right; border-top: 1px dashed #e2d5c4;">+ {tien_phat_sinh:,} đ</td>
+                            </tr>
+                            '''
+                    except: pass
+            
+            # Tổng thanh toán cuối cùng = Tiền học + Tiền phát sinh
+            tong_thanh_toan = tong_tien_goc + tien_phat_sinh
+            
             nhan_xet = str(row['Nhận Xét Của GV']).strip() if pd.notna(row['Nhận Xét Của GV']) else "Bé học tập tích cực, tự tin giao tiếp."
             bank = str(row['Ngân Hàng']).strip()
             stk = str(row['STK']).split('.')[0] if pd.notna(row['STK']) else ""
 
-            # Xử lý Ngày
+            # Xử lý Ngày đi học
             date_cols = [c for c in df.columns if '/' in str(c)]
             days_html = ""
             for col in date_cols:
@@ -58,83 +81,104 @@ if uploaded_file:
                         days_html += f'<div style="background:#f7f1e9; border:1px solid #e0d1c1; border-radius:8px; padding:6px 12px; margin:4px; display:inline-block; text-align:center;"><div style="font-size:11px; color:#8e7f72; margin-bottom:3px;">{thu}</div><div style="font-size:14px; font-weight:bold; color:#4a2e25;">{day_month}</div></div>'
 
             if not days_html:
-                days_html = '<span style="color:#aaa; font-style:italic; font-size:14px;">Chưa có buổi học</span>'
+                days_html = '<span style="color:#aaa; font-style:italic; font-size:14px;">Chưa có dữ liệu điểm danh</span>'
 
             # QR Code VietQR
             qr_html = ""
             if bank and stk and bank != 'nan':
-                add_info = urllib.parse.quote(ten) # Chỉ để tên bé
-                qr_url = f"https://img.vietqr.io/image/{bank}-{stk}-compact2.png?amount={tong_tien}&addInfo={add_info}"
+                add_info = urllib.parse.quote(ten)
+                qr_url = f"https://img.vietqr.io/image/{bank}-{stk}-compact2.png?amount={tong_thanh_toan}&addInfo={add_info}"
                 try:
                     resp = requests.get(qr_url, timeout=3)
                     if resp.status_code == 200:
                         qr_b64 = f"data:image/png;base64,{base64.b64encode(resp.content).decode()}"
-                        qr_html = f'<img src="{qr_b64}" style="width: 110px; height: 110px; border-radius: 12px;">'
+                        qr_html = f'<img src="{qr_b64}" style="width: 130px; height: 130px; border-radius: 12px;">'
                 except: pass
             
             if not qr_html:
-                qr_html = '<div style="font-size:11px; color:#999; padding:20px; border:1px dashed #ccc; border-radius:8px;">CHƯA CÓ QR</div>'
+                qr_html = '<div style="font-size:12px; color:#999; padding:40px 0; border:1px dashed #ccc; border-radius:8px;">CHƯA CÓ QR</div>'
 
-            # Logo chính giữa
-            logo_html = f'<div style="margin: 0 auto 12px auto; width: 65px; height: 65px; border-radius: 50%; border: 2px solid white; background-image: url({logo_b64}); background-size: cover; background-position: center; box-shadow: 0 3px 8px rgba(0,0,0,0.15);"></div>' if logo_b64 else ''
+            logo_html = f'<div style="width: 90px; height: 90px; border-radius: 50%; border: 2px solid #d49a71; background-image: url({logo_b64}); background-size: cover; background-position: center; flex-shrink: 0;"></div>' if logo_b64 else ''
 
-            # Thẻ HTML cho Phiếu (Tự co giãn chiều cao)
+            # BỐ CỤC A4 NGANG HOÀN TOÀN MỚI
             receipt_html = f"""
-            <div style="width: 450px; margin: auto; background: #fdfaf6; box-shadow: 0 8px 25px rgba(0,0,0,0.15); border-radius: 15px; overflow: hidden; font-family: Arial, sans-serif; color: #333;">
-                <div style="background: linear-gradient(135deg, #bc6c65 0%, #d49a71 100%); color: white; text-align: center; padding: 35px 20px 25px;">
-                    {logo_html}
-                    <div style="font-size: 12px; letter-spacing: 2px; font-weight:bold;">LỚP NHẠC PHÍM HỒNG</div>
-                    <h1 style="font-size: 32px; margin: 10px 0; font-family: 'Times New Roman', serif; text-transform: uppercase;">PHIẾU HỌC PHÍ</h1>
-                    <div style="margin-bottom: 15px; font-size: 15px;">Tháng 5 / 2026</div>
-                    <div style="display: inline-block; background: rgba(255,255,255,0.25); padding: 6px 20px; border-radius: 20px; font-size: 13px; border: 1px solid rgba(255,255,255,0.4); font-weight: bold;">{lop}</div>
-                </div>
+            <div style="width: 800px; background: white; font-family: 'Arial', sans-serif; margin: 0 auto; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border-radius: 15px; overflow: hidden; box-sizing: border-box;">
                 
-                <div style="padding: 25px 35px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px dashed #e2d5c4;">
-                        <div style="display:flex; align-items:center; color: #6d5b4b; font-size: 16px;"><span style="font-size: 20px; margin-right: 12px;">🎓</span> Học sinh</div>
-                        <strong style="color: #2c1a16; font-size: 17px; text-align: right;">{ten}</strong>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px dashed #e2d5c4;">
-                        <div style="display:flex; align-items:center; color: #6d5b4b; font-size: 16px;"><span style="font-size: 20px; margin-right: 12px;">🧾</span> Học phí / buổi</div>
-                        <strong style="color: #2c1a16; font-size: 17px; text-align: right;">{hoc_phi:,} đ</strong>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px 0;">
-                        <div style="display:flex; align-items:center; color: #6d5b4b; font-size: 16px;"><span style="font-size: 20px; margin-right: 12px;">📅</span> Số buổi học</div>
-                        <strong style="color: #2c1a16; font-size: 17px; text-align: right;">{so_buoi} buổi</strong>
-                    </div>
-                    
-                    <div style="border: 2px solid #ecdac8; border-radius: 15px; background: #fcf4e8; text-align: center; padding: 20px; margin: 25px 0;">
-                        <div style="font-size: 14px; color: #8e7f72; font-weight: bold; letter-spacing: 1px;">TỔNG HỌC PHÍ</div>
-                        <div style="font-size: 34px; color: #4a2e25; font-weight: 700; margin-top: 5px;">{tong_tien:,} đ</div>
-                    </div>
-                    
-                    <div style="text-align: center; font-size: 13px; color: #8e7f72; font-weight: bold; margin: 20px 0 12px; letter-spacing: 1px;">NGÀY ĐI HỌC</div>
-                    <div style="text-align: center;">{days_html}</div>
-                    
-                    <div style="text-align: center; font-size: 13px; color: #8e7f72; font-weight: bold; margin: 30px 0 12px; letter-spacing: 1px;">— NHẬN XÉT —</div>
-                    <div style="border: 1px solid #f2e2b3; background: #fffdf5; border-radius: 12px; padding: 18px; text-align: center; color: #5a4b41; font-style: italic; line-height: 1.5; font-size: 15px;">{nhan_xet}</div>
-                    
-                    <div style="display: flex; gap: 20px; align-items: center; margin-top: 35px; padding: 20px; border: 1px dashed #d49a71; background: white; border-radius: 15px;">
-                        {qr_html}
-                        <div style="text-align:left;">
-                            <div style="color: #d49a71; font-size: 12px; font-weight: bold; margin-bottom: 5px;">MÃ THANH TOÁN</div>
-                            <div style="font-size: 15px; font-weight: 700; color: #4a2e25;">{bank if bank != 'nan' else 'CHƯA CÓ NH'}</div>
-                            <div style="font-size: 18px; color: #bc6c65; font-weight: 800; margin: 4px 0;">{stk if stk != 'nan' else 'CHƯA CÓ STK'}</div>
-                            <div style="font-size: 11px; color: #8e7f72; font-weight:bold;">LỚP NHẠC PHÍM HỒNG</div>
+                <div style="background: linear-gradient(135deg, #bc6c65 0%, #d49a71 100%); padding: 35px 45px; display: flex; align-items: center; justify-content: space-between; color: white;">
+                    <div style="display: flex; align-items: center; gap: 20px;">
+                        {logo_html}
+                        <div style="text-align: left;">
+                            <div style="font-size: 15px; letter-spacing: 3px; font-weight: bold; font-family: 'Arial', sans-serif;">LỚP NHẠC PHÍM HỒNG</div>
+                            <div style="font-size: 14px; margin-top: 5px; opacity: 0.9;">Ươm mầm tài năng âm nhạc</div>
                         </div>
                     </div>
+                    <div style="text-align: right;">
+                        <h1 style="margin: 0; font-size: 36px; font-family: 'Times New Roman', serif; text-transform: uppercase;">Phiếu Học Phí</h1>
+                        <div style="font-size: 16px; margin-top: 5px;">Tháng 5 / 2026</div>
+                        <div style="display: inline-block; margin-top: 12px; padding: 6px 20px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.5); border-radius: 20px; font-weight: bold; font-size: 14px;">Lớp {lop}</div>
+                    </div>
                 </div>
-                
-                <div style="text-align: center; padding: 25px 20px; font-size: 14px; color: #9a8a7a; font-style: italic;">🎩 Trân trọng cảm ơn quý phụ huynh!</div>
+
+                <div style="padding: 40px 45px;">
+                    <div style="background: #fdfaf6; border: 1px solid #f2e2b3; border-radius: 15px; padding: 25px 35px; margin-bottom: 35px;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 18px;">
+                            <tr>
+                                <td style="padding: 15px 0; color: #7a6b5d; width: 40%;">Học sinh:</td>
+                                <td style="padding: 15px 0; font-weight: bold; color: #2c1a16; text-align: right; font-size: 22px;">{ten}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 15px 0; color: #7a6b5d; border-top: 1px dashed #e2d5c4;">Học phí / buổi:</td>
+                                <td style="padding: 15px 0; font-weight: bold; color: #2c1a16; text-align: right; border-top: 1px dashed #e2d5c4;">{hoc_phi:,} đ</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 15px 0; color: #7a6b5d; border-top: 1px dashed #e2d5c4;">Số buổi học:</td>
+                                <td style="padding: 15px 0; font-weight: bold; color: #2c1a16; text-align: right; border-top: 1px dashed #e2d5c4;">{so_buoi} buổi</td>
+                            </tr>
+                            {phat_sinh_html}
+                        </table>
+                    </div>
+
+                    <div style="display: flex; gap: 35px;">
+                        
+                        <div style="flex: 1;">
+                            <div style="margin-bottom: 30px;">
+                                <div style="font-size: 14px; color: #8e7f72; font-weight: bold; letter-spacing: 1px; margin-bottom: 12px;">NGÀY ĐI HỌC</div>
+                                <div>{days_html}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 14px; color: #8e7f72; font-weight: bold; letter-spacing: 1px; margin-bottom: 12px;">NHẬN XÉT CỦA GIÁO VIÊN</div>
+                                <div style="background: #fffdf5; border: 1px solid #f2e2b3; border-radius: 12px; padding: 20px; color: #5a4b41; font-style: italic; line-height: 1.6; font-size: 16px;">
+                                    {nhan_xet}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="width: 270px; display: flex; flex-direction: column; gap: 20px;">
+                            <div style="background: #fdf6ec; border: 2px solid #ecdac8; border-radius: 15px; padding: 25px 15px; text-align: center;">
+                                <div style="font-size: 14px; color: #8e7f72; font-weight: bold; letter-spacing: 1px;">TỔNG THANH TOÁN</div>
+                                <div style="font-size: 34px; color: #4a2e25; font-weight: 700; margin-top: 10px;">{tong_thanh_toan:,} đ</div>
+                            </div>
+                            <div style="background: white; border: 2px dashed #d49a71; border-radius: 15px; padding: 20px; text-align: center;">
+                                <div style="font-size: 12px; color: #d49a71; font-weight: bold; margin-bottom: 15px; letter-spacing: 1px;">MÃ QUÉT THANH TOÁN</div>
+                                {qr_html}
+                                <div style="margin-top: 15px; font-size: 18px; font-weight: 800; color: #bc6c65; text-transform: uppercase;">{bank if bank != 'nan' else 'CHƯA CÓ NH'}</div>
+                                <div style="font-size: 15px; font-weight: bold; color: #4a2e25; margin-top: 5px;">{stk if stk != 'nan' else 'CHƯA CÓ STK'}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="text-align: center; margin-top: 45px; font-size: 15px; color: #9a8a7a; font-style: italic;">
+                        🎩 Trân trọng cảm ơn quý phụ huynh!
+                    </div>
+                </div>
             </div>
             """
 
-            # Code HTML hoàn chỉnh cho file tải về (Nền xám nhạt để nổi bật tờ phiếu)
+            # Đóng gói HTML vào ZIP
             full_html_file = f"""<!DOCTYPE html>
             <html lang="vi">
             <head>
                 <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>Phiếu Học Phí - {ten}</title>
             </head>
             <body style="background-color: #e9ecef; display: flex; justify-content: center; padding: 40px 10px; margin: 0;">
@@ -142,20 +186,17 @@ if uploaded_file:
             </body>
             </html>"""
 
-            # Ép ghi file với bảng mã UTF-8 để không lỗi dấu Tiếng Việt
             safe_name = ten.replace(' ', '_').replace('(', '').replace(')', '')
             zip_file.writestr(f"Phieu_Hoc_Phi_{safe_name}.html", full_html_file.encode('utf-8'))
 
-            # Hiển thị demo phiếu đầu tiên cực sạch trên web
             if index == 0:
-                clean_preview = receipt_html.replace('\n', '')
-                st.markdown(clean_preview, unsafe_allow_html=True)
-                st.write("<br>", unsafe_allow_html=True)
+                st.markdown(receipt_html.replace('\n', ''), unsafe_allow_html=True)
+                st.write("<br><br>", unsafe_allow_html=True)
 
-    st.success("🎉 Đã xong! Bạn tải file ZIP về, mở file HTML lên xem và chụp màn hình cực kỳ nét nhé.")
+    st.success("🎉 Đã hoàn tất! Mời bạn nhấn nút tải về bên dưới.")
     st.download_button(
-        label="⬇️ TẢI XUỐNG FILE ZIP (BẢN HTML HOÀN HẢO)",
+        label="⬇️ TẢI XUỐNG FILE ZIP (BẢN A4 NGANG MỚI)",
         data=zip_buffer.getvalue(),
-        file_name="Phieu_Hoc_Phi_HTML.zip",
+        file_name="Phieu_Hoc_Phi_A4.zip",
         mime="application/zip"
     )
