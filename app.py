@@ -3,16 +3,14 @@ import pandas as pd
 import requests
 import base64
 import urllib.parse
-import zipfile
-import io
 import os
 
-st.set_page_config(page_title="Phím Hồng Music - VIP Billing", layout="wide")
+st.set_page_config(page_title="Phím Hồng Music - PNG Generator", layout="wide")
 
 LOGO_PATH = "PHÍM HỒNG MUSIC (Nền trắng).jpg"
 
-st.title("🎯 Hệ thống xuất Phiếu Học Phí (Bản Final VIP)")
-st.write("Đã Fix lỗi iPhone: Nhúng trực tiếp mã QR vào file HTML để iOS không chặn ảnh.")
+st.title("🎨 Cỗ Máy Xuất Ảnh PNG - Phím Hồng Music")
+st.write("Bản thiết kế cuối cùng: Xuất trực tiếp ra file ảnh PNG nét căng như Canva, gửi Zalo cực chuyên nghiệp.")
 
 uploaded_file = st.file_uploader("📂 Tải file Excel Danh_Sach_Hoc_Phi.xlsx", type=["xlsx"])
 
@@ -22,7 +20,7 @@ def get_base64_logo():
             return f"data:image/jpeg;base64,{base64.b64encode(f.read()).decode()}"
     return ""
 
-# --- ICON SVG SIÊU NÉT ---
+# Icon SVG (Đảm bảo độ nét cao nhất khi xuất ảnh)
 svg_student = '<svg viewBox="0 0 24 24" width="24" height="24" fill="#6d5b4b" style="margin-right:12px;"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2.06-1.12V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>'
 svg_receipt = '<svg viewBox="0 0 24 24" width="22" height="22" fill="#6d5b4b" style="margin-right:12px;"><path d="M18 17H6v-2h12v2zm0-4H6v-2h12v2zm0-4H6V7h12v2zM3 22l1.5-1.5L6 22l1.5-1.5L9 22l1.5-1.5L12 22l1.5-1.5L15 22l1.5-1.5L18 22l1.5-1.5L21 22V2l-1.5 1.5L18 2l-1.5 1.5L15 2l-1.5 1.5L12 2l-1.5 1.5L9 2l-1.5 1.5L6 2 4.5 3.5 3 2v20z"/></svg>'
 svg_calendar = '<svg viewBox="0 0 24 24" width="22" height="22" fill="#6d5b4b" style="margin-right:12px;"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 002 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/></svg>'
@@ -33,149 +31,218 @@ if uploaded_file:
     df = pd.read_excel(uploaded_file).dropna(subset=['Họ và Tên'])
     logo_b64 = get_base64_logo()
     
-    st.success(f"Đã nhận {len(df)} học sinh. Đang vẽ HTML và tải mã QR...")
-
-    zip_buffer = io.BytesIO()
+    st.success(f"Đã nhận {len(df)} học sinh. Đang xử lý dữ liệu và thiết kế, đợi 1 xíu nhé...")
     progress_bar = st.progress(0)
     
-    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-        for index, row in df.iterrows():
-            ten = str(row['Họ và Tên']).strip()
-            progress_bar.progress((index + 1) / len(df))
-            
-            lop = str(row['Lớp']).strip() if pd.notna(row['Lớp']) else "Piano"
-            hoc_phi = int(row['Học Phí (buổi)']) if pd.notna(row['Học Phí (buổi)']) else 0
-            so_buoi = int(row['Tổng buổi học']) if pd.notna(row['Tổng buổi học']) else 0
-            tong_tien_goc = int(row['Tổng học phí']) if pd.notna(row['Tổng học phí']) else (hoc_phi * so_buoi)
-            
-            # Xử lý Tiền sách
-            tien_sach = 0
-            tien_sach_html = ""
-            if 'Tiền sách' in df.columns:
-                val = row['Tiền sách']
-                if pd.notna(val) and str(val).strip() != '':
-                    try:
-                        tien_sach = int(float(val))
-                        if tien_sach > 0:
-                            tien_sach_html = f'''
-                            <tr style="border-top: 1px dashed #e2d5c4;">
-                                <td style="padding: 15px 0; color: #7a6b5d; display:flex; align-items:center;">{svg_book} Tiền sách / Giáo trình:</td>
-                                <td style="padding: 15px 0; font-weight: 900; color: #bc6c65; text-align: right; font-size: 24px; font-family: 'Times New Roman', serif;">+ {tien_sach:,} đ</td>
-                            </tr>
-                            '''
-                    except: pass
-            
-            tong_thanh_toan = tong_tien_goc + tien_sach
-            nhan_xet = str(row['Nhận Xét Của GV']).strip() if pd.notna(row['Nhận Xét Của GV']) else "Bé học tập tích cực!"
-            bank = str(row['Ngân Hàng']).strip()
-            stk = str(row['STK']).split('.')[0] if pd.notna(row['STK']) else ""
-
-            # Ngày học
-            date_cols = [c for c in df.columns if '/' in str(c)]
-            days_html = ""
-            for col in date_cols:
-                if str(row[col]).strip().upper() == 'X':
-                    parts = col.split(' ')
-                    if len(parts) > 1:
-                        thu = parts[0]
-                        d_parts = parts[1].split('/')
-                        day_month = f"{d_parts[0]:>02}/{d_parts[1]:>02}"
-                        days_html += f'<div style="background:#f7f1e9; border:1px solid #e0d1c1; border-radius:8px; padding:6px 12px; margin:4px; display:inline-block; text-align:center;"><div style="font-size:10px; color:#8e7f72; margin-bottom:2px;">{thu}</div><div style="font-size:13px; font-weight:bold; color:#4a2e25;">{day_month}</div></div>'
-
-            qr_html = ""
-            if bank and stk:
-                # Chỉ để duy nhất Tên học sinh
-                add_info = urllib.parse.quote(ten)
-                qr_url = f"https://img.vietqr.io/image/{bank}-{stk}-compact2.png?amount={tong_thanh_toan}&addInfo={add_info}"
-                
-                # --- FIX LỖI iOS Ở ĐÂY: TẢI ẢNH VÀ NHÚNG BASE64 VÀO HTML ---
+    all_receipts_html = ""
+    
+    for index, row in df.iterrows():
+        ten = str(row['Họ và Tên']).strip()
+        safe_name = ten.replace(' ', '_').replace('(', '').replace(')', '')
+        progress_bar.progress((index + 1) / len(df))
+        
+        lop = str(row['Lớp']).strip() if pd.notna(row['Lớp']) else "Piano"
+        hoc_phi = int(row['Học Phí (buổi)']) if pd.notna(row['Học Phí (buổi)']) else 0
+        so_buoi = int(row['Tổng buổi học']) if pd.notna(row['Tổng buổi học']) else 0
+        tong_tien_goc = int(row['Tổng học phí']) if pd.notna(row['Tổng học phí']) else (hoc_phi * so_buoi)
+        
+        # Tiền sách
+        tien_sach = 0
+        tien_sach_html = ""
+        if 'Tiền sách' in df.columns:
+            val = row['Tiền sách']
+            if pd.notna(val) and str(val).strip() != '':
                 try:
-                    resp = requests.get(qr_url, timeout=5)
-                    if resp.status_code == 200:
-                        qr_b64 = f"data:image/png;base64,{base64.b64encode(resp.content).decode('utf-8')}"
-                        qr_html = f'<img src="{qr_b64}" style="width: 125px; height: 125px; border-radius: 10px;">'
-                    else:
-                        qr_html = f'<img src="{qr_url}" style="width: 125px; height: 125px; border-radius: 10px;">'
-                except:
-                    qr_html = f'<img src="{qr_url}" style="width: 125px; height: 125px; border-radius: 10px;">'
+                    tien_sach = int(float(val))
+                    if tien_sach > 0:
+                        tien_sach_html = f'''
+                        <tr style="border-top: 1px dashed #e2d5c4;">
+                            <td style="padding: 15px 0; color: #7a6b5d; display:flex; align-items:center;">{svg_book} Tiền sách / Giáo trình:</td>
+                            <td style="padding: 15px 0; font-weight: 900; color: #bc6c65; text-align: right; font-size: 24px; font-family: 'Times New Roman', serif;">+ {tien_sach:,} đ</td>
+                        </tr>
+                        '''
+                except: pass
+        
+        tong_thanh_toan = tong_tien_goc + tien_sach
+        nhan_xet = str(row['Nhận Xét Của GV']).strip() if pd.notna(row['Nhận Xét Của GV']) else "Bé học tập tích cực!"
+        bank = str(row['Ngân Hàng']).strip()
+        stk = str(row['STK']).split('.')[0] if pd.notna(row['STK']) else ""
 
-            # --- GIAO DIỆN HOÀN THIỆN ---
-            receipt_html = f"""
-            <div style="width: 850px; background: white; font-family: Arial, sans-serif; margin: 0 auto; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border-radius: 20px; overflow: hidden; box-sizing: border-box;">
+        # Ngày học
+        date_cols = [c for c in df.columns if '/' in str(c)]
+        days_html = ""
+        for col in date_cols:
+            if str(row[col]).strip().upper() == 'X':
+                parts = col.split(' ')
+                if len(parts) > 1:
+                    thu = parts[0]
+                    d_parts = parts[1].split('/')
+                    day_month = f"{d_parts[0]:>02}/{d_parts[1]:>02}"
+                    days_html += f'<div style="background:#f7f1e9; border:1px solid #e0d1c1; border-radius:8px; padding:6px 12px; margin:4px; display:inline-block; text-align:center;"><div style="font-size:10px; color:#8e7f72; margin-bottom:2px;">{thu}</div><div style="font-size:13px; font-weight:bold; color:#4a2e25;">{day_month}</div></div>'
+
+        qr_html = ""
+        if bank and stk:
+            # ĐÃ XÓA CHỮ "Hoc phi", CHỈ ĐỂ TÊN HỌC SINH
+            add_info = urllib.parse.quote(ten)
+            qr_url = f"https://img.vietqr.io/image/{bank}-{stk}-compact2.png?amount={tong_thanh_toan}&addInfo={add_info}"
+            try:
+                # Ép ảnh QR thành Base64 để khi xuất ảnh PNG không bị lỗi mạng
+                resp = requests.get(qr_url, timeout=3)
+                if resp.status_code == 200:
+                    qr_b64 = f"data:image/png;base64,{base64.b64encode(resp.content).decode()}"
+                    qr_html = f'<img src="{qr_b64}" style="width: 125px; height: 125px; border-radius: 10px;">'
+            except: pass
+
+        if not qr_html:
+            qr_html = '<div style="font-size:12px; color:#999; padding:40px 0; border:1px dashed #ccc; border-radius:8px;">CHƯA CÓ QR</div>'
+
+        # TEMPLATE HTML CỦA 1 PHIẾU (CLASS: receipt-card)
+        receipt_html = f"""
+        <div class="receipt-card" data-name="{safe_name}" style="width: 850px; background: white; font-family: Arial, sans-serif; margin: 0 auto 40px auto; border-radius: 20px; overflow: hidden; box-sizing: border-box; position: relative;">
+            
+            <div style="background: linear-gradient(135deg, #bc6c65 0%, #d49a71 100%); padding: 35px 50px; display: flex; align-items: center; justify-content: space-between; color: white;">
+                <div style="width: 90px; height: 90px; border-radius: 50%; border: 3px solid white; background-color: #fff; background-image: url('{logo_b64}'); background-size: cover; background-position: center; flex-shrink: 0;"></div>
                 
-                <div style="background: linear-gradient(135deg, #bc6c65 0%, #d49a71 100%); padding: 35px 50px; display: flex; align-items: center; justify-content: space-between; color: white;">
-                    <div style="width: 90px; height: 90px; border-radius: 50%; border: 3px solid white; background-color: #fff; background-image: url('{logo_b64}'); background-size: cover; background-position: center; flex-shrink: 0;"></div>
-                    
-                    <div style="text-align: center; flex-grow: 1; padding: 0 20px;">
-                        <div style="font-size: 16px; letter-spacing: 3px; font-weight: bold; opacity: 0.9; margin-bottom: 5px; text-transform: uppercase;">Lớp Nhạc Phím Hồng</div>
-                        <h1 style="margin: 0; font-size: 44px; font-weight: 900; letter-spacing: 2px; font-family: 'Times New Roman', Times, serif; text-transform: uppercase; text-shadow: 1px 1px 4px rgba(0,0,0,0.2);">Phiếu Học Phí</h1>
-                    </div>
-
-                    <div style="text-align: center; min-width: 180px;">
-                        <div style="font-size: 20px; font-weight: bold; margin-bottom: 8px;">Tháng 5 / 2026</div>
-                        <div style="font-size: 28px; font-weight: 900; background: rgba(255,255,255,0.25); padding: 10px 25px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.5); font-family: 'Times New Roman', Times, serif;">Lớp {lop}</div>
-                    </div>
+                <div style="text-align: center; flex-grow: 1; padding: 0 20px;">
+                    <div style="font-size: 16px; letter-spacing: 3px; font-weight: bold; opacity: 0.9; margin-bottom: 5px; text-transform: uppercase;">Lớp Nhạc Phím Hồng</div>
+                    <h1 style="margin: 0; font-size: 44px; font-weight: 900; letter-spacing: 2px; font-family: 'Times New Roman', Times, serif; text-transform: uppercase; text-shadow: 1px 1px 4px rgba(0,0,0,0.2);">Phiếu Học Phí</h1>
                 </div>
 
-                <div style="padding: 40px 60px;">
-                    <div style="background: #fdfaf6; border: 1px solid #f2e2b3; border-radius: 15px; padding: 30px 45px; margin: 0 auto 35px auto; width: 85%;">
-                        <table style="width: 100%; border-collapse: collapse; font-size: 20px;">
-                            <tr>
-                                <td style="padding: 15px 0; color: #7a6b5d; display:flex; align-items:center;">{svg_student} Học sinh:</td>
-                                <td style="padding: 15px 0; font-weight: 900; color: #2c1a16; text-align: right; font-size: 30px; font-family: 'Times New Roman', Times, serif;">{ten}</td>
-                            </tr>
-                            <tr style="border-top: 1px dashed #e2d5c4;">
-                                <td style="padding: 15px 0; color: #7a6b5d; display:flex; align-items:center;">{svg_receipt} Học phí / buổi:</td>
-                                <td style="padding: 15px 0; font-weight: bold; color: #2c1a16; text-align: right;">{hoc_phi:,} đ</td>
-                            </tr>
-                            <tr style="border-top: 1px dashed #e2d5c4;">
-                                <td style="padding: 15px 0; color: #7a6b5d; display:flex; align-items:center;">{svg_calendar} Số buổi học:</td>
-                                <td style="padding: 15px 0; font-weight: bold; color: #2c1a16; text-align: right;">{so_buoi} buổi</td>
-                            </tr>
-                            {tien_sach_html}
-                        </table>
-                    </div>
-
-                    <div style="display: flex; gap: 45px; align-items: flex-start; justify-content: center; width: 95%; margin: 0 auto;">
-                        <div style="flex: 1.3;">
-                            <div style="margin-bottom: 25px;">
-                                <div style="font-size: 14px; color: #8e7f72; font-weight: bold; letter-spacing: 1px; margin-bottom: 12px;">NGÀY ĐI HỌC</div>
-                                <div style="text-align: left;">{days_html if days_html else 'Chưa có dữ liệu'}</div>
-                            </div>
-                            <div>
-                                <div style="font-size: 14px; color: #8e7f72; font-weight: bold; margin-bottom: 12px; letter-spacing: 1px;">NHẬN XÉT CỦA GIÁO VIÊN</div>
-                                <div style="background: #fffdf5; border: 1px solid #f2e2b3; border-radius: 12px; padding: 20px; color: #5a4b41; font-style: italic; line-height: 1.6; font-size: 16px;">
-                                    {nhan_xet}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div style="flex: 0.7; display: flex; flex-direction: column; gap: 20px;">
-                            <div style="background: #fdf6ec; border: 2px solid #ecdac8; border-radius: 15px; padding: 20px; text-align: center;">
-                                <div style="font-size: 13px; color: #8e7f72; font-weight: bold;">TỔNG THANH TOÁN</div>
-                                <div style="font-size: 38px; color: #4a2e25; font-weight: 900; margin-top: 10px; font-family: 'Times New Roman', Times, serif;">{tong_thanh_toan:,} đ</div>
-                            </div>
-                            <div style="background: white; border: 2px dashed #d49a71; border-radius: 15px; padding: 20px; text-align: center;">
-                                <div style="font-size: 11px; color: #d49a71; font-weight: bold; margin-bottom: 15px;">QUÉT MÃ THANH TOÁN</div>
-                                {qr_html}
-                                <div style="margin-top: 15px; font-size: 18px; font-weight: 900; color: #bc6c65; text-transform: uppercase;">{bank}</div>
-                                <div style="font-size: 16px; font-weight: bold; color: #4a2e25; margin-top: 5px;">{stk}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div style="text-align: center; margin-top: 55px; font-size: 17px; color: #9a8a7a; font-style: italic;">
-                        {svg_thanks} Trân trọng cảm ơn quý phụ huynh!
-                    </div>
+                <div style="text-align: center; min-width: 180px;">
+                    <div style="font-size: 20px; font-weight: bold; margin-bottom: 8px;">Tháng 5 / 2026</div>
+                    <div style="font-size: 28px; font-weight: 900; background: rgba(255,255,255,0.25); padding: 10px 25px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.5); font-family: 'Times New Roman', Times, serif;">Lớp {lop}</div>
                 </div>
             </div>
-            """
 
-            full_html = f"""<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"></head><body style="background:#e9ecef; display:flex; justify-content:center; padding:50px 0;">{receipt_html}</body></html>"""
-            safe_name = ten.replace(' ', '_')
-            zip_file.writestr(f"Phieu_{safe_name}.html", full_html.encode('utf-8'))
+            <div style="padding: 40px 60px;">
+                <div style="background: #fdfaf6; border: 1px solid #f2e2b3; border-radius: 15px; padding: 30px 45px; margin: 0 auto 35px auto; width: 85%;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 20px;">
+                        <tr>
+                            <td style="padding: 15px 0; color: #7a6b5d; display:flex; align-items:center;">{svg_student} Học sinh:</td>
+                            <td style="padding: 15px 0; font-weight: 900; color: #2c1a16; text-align: right; font-size: 30px; font-family: 'Times New Roman', Times, serif;">{ten}</td>
+                        </tr>
+                        <tr style="border-top: 1px dashed #e2d5c4;">
+                            <td style="padding: 15px 0; color: #7a6b5d; display:flex; align-items:center;">{svg_receipt} Học phí / buổi:</td>
+                            <td style="padding: 15px 0; font-weight: bold; color: #2c1a16; text-align: right;">{hoc_phi:,} đ</td>
+                        </tr>
+                        <tr style="border-top: 1px dashed #e2d5c4;">
+                            <td style="padding: 15px 0; color: #7a6b5d; display:flex; align-items:center;">{svg_calendar} Số buổi học:</td>
+                            <td style="padding: 15px 0; font-weight: bold; color: #2c1a16; text-align: right;">{so_buoi} buổi</td>
+                        </tr>
+                        {tien_sach_html}
+                    </table>
+                </div>
 
-            if index == 0:
-                st.markdown(receipt_html.replace('\n', ''), unsafe_allow_html=True)
+                <div style="display: flex; gap: 45px; align-items: flex-start; justify-content: center; width: 95%; margin: 0 auto;">
+                    <div style="flex: 1.3;">
+                        <div style="margin-bottom: 25px;">
+                            <div style="font-size: 14px; color: #8e7f72; font-weight: bold; letter-spacing: 1px; margin-bottom: 12px;">NGÀY ĐI HỌC</div>
+                            <div style="text-align: left;">{days_html if days_html else 'Chưa có dữ liệu'}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 14px; color: #8e7f72; font-weight: bold; margin-bottom: 12px; letter-spacing: 1px;">NHẬN XÉT CỦA GIÁO VIÊN</div>
+                            <div style="background: #fffdf5; border: 1px solid #f2e2b3; border-radius: 12px; padding: 20px; color: #5a4b41; font-style: italic; line-height: 1.6; font-size: 16px;">
+                                {nhan_xet}
+                            </div>
+                        </div>
+                    </div>
 
-    st.download_button(label="⬇️ TẢI XUỐNG ZIP PHIẾU", data=zip_buffer.getvalue(), file_name="Phieu_Hoc_Phi_Phim_Hong.zip", mime="application/zip")
+                    <div style="flex: 0.7; display: flex; flex-direction: column; gap: 20px;">
+                        <div style="background: #fdf6ec; border: 2px solid #ecdac8; border-radius: 15px; padding: 20px; text-align: center;">
+                            <div style="font-size: 13px; color: #8e7f72; font-weight: bold;">TỔNG THANH TOÁN</div>
+                            <div style="font-size: 38px; color: #4a2e25; font-weight: 900; margin-top: 10px; font-family: 'Times New Roman', Times, serif;">{tong_thanh_toan:,} đ</div>
+                        </div>
+                        <div style="background: white; border: 2px dashed #d49a71; border-radius: 15px; padding: 20px; text-align: center;">
+                            <div style="font-size: 11px; color: #d49a71; font-weight: bold; margin-bottom: 15px;">QUÉT MÃ THANH TOÁN</div>
+                            {qr_html}
+                            <div style="margin-top: 15px; font-size: 18px; font-weight: 900; color: #bc6c65; text-transform: uppercase;">{bank}</div>
+                            <div style="font-size: 16px; font-weight: bold; color: #4a2e25; margin-top: 5px;">{stk}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="text-align: center; margin-top: 55px; font-size: 17px; color: #9a8a7a; font-style: italic;">
+                    {svg_thanks} Trân trọng cảm ơn quý phụ huynh!
+                </div>
+            </div>
+        </div>
+        """
+        all_receipts_html += receipt_html
+
+    # TẠO FILE WEB ĐỂ XUẤT ẢNH PNG
+    full_export_system = f"""
+    <!DOCTYPE html>
+    <html lang="vi">
+    <head>
+        <meta charset="UTF-8">
+        <title>Cỗ Máy Xuất Ảnh PNG - Phím Hồng</title>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+        <style>
+            body {{ background: #2c3e50; font-family: Arial, sans-serif; text-align: center; padding: 40px; margin: 0; }}
+            .control-panel {{ background: white; padding: 30px 50px; border-radius: 15px; margin-bottom: 40px; display: inline-block; box-shadow: 0 10px 20px rgba(0,0,0,0.2); }}
+            button {{ background: linear-gradient(135deg, #bc6c65 0%, #d49a71 100%); color: white; border: none; padding: 18px 40px; font-size: 20px; border-radius: 10px; cursor: pointer; font-weight: bold; transition: 0.3s; box-shadow: 0 4px 10px rgba(188, 108, 101, 0.4);}}
+            button:hover {{ transform: scale(1.05); }}
+            button:disabled {{ background: #999; cursor: not-allowed; transform: none; box-shadow: none;}}
+        </style>
+    </head>
+    <body>
+        <div class="control-panel">
+            <h2 style="margin-top: 0; color: #333;">CÔNG CỤ XUẤT ẢNH PNG</h2>
+            <p style="color: #666; font-size: 16px;">Đã tải dữ liệu của <b>{len(df)}</b> học sinh.</p>
+            <button onclick="startExport()" id="btn-export">🚀 BẤM VÀO ĐÂY ĐỂ TẢI ZIP ẢNH PNG</button>
+            <p id="status" style="color: #bc6c65; font-weight: bold; margin-top: 20px; font-size: 18px;"></p>
+        </div>
+        
+        <div id="receipt-container" style="display: flex; flex-direction: column; gap: 30px;">
+            {all_receipts_html}
+        </div>
+
+        <script>
+            async function startExport() {{
+                const btn = document.getElementById('btn-export');
+                const status = document.getElementById('status');
+                btn.disabled = true;
+                btn.innerText = "⏳ Đang vẽ ảnh, đừng tắt trang nhé...";
+
+                const zip = new JSZip();
+                const receipts = document.querySelectorAll('.receipt-card');
+
+                for(let i=0; i<receipts.length; i++) {{
+                    let name = receipts[i].getAttribute('data-name');
+                    status.innerText = "Đang xử lý ảnh: " + name + " (" + (i+1) + "/" + receipts.length + ")";
+
+                    // Sức mạnh của trình duyệt: Chụp ảnh thẻ HTML thành PNG nét căng (scale 2)
+                    const canvas = await html2canvas(receipts[i], {{
+                        scale: 2, 
+                        useCORS: true,
+                        backgroundColor: null
+                    }});
+
+                    const imgData = canvas.toDataURL("image/png").split(',')[1];
+                    zip.file("Phieu_Hoc_Phi_" + name + ".png", imgData, {{base64: true}});
+                }}
+
+                status.innerText = "📦 Đang nén thành file ZIP...";
+                zip.generateAsync({{type:"blob"}}).then(function(content) {{
+                    saveAs(content, "Tat_Ca_Phieu_PNG.zip");
+                    status.innerText = "✅ XUẤT ẢNH THÀNH CÔNG! BẠN KIỂM TRA THƯ MỤC DOWNLOAD NHÉ.";
+                    btn.innerText = "🚀 XUẤT LẠI ẢNH NẾU CẦN";
+                    btn.disabled = false;
+                }});
+            }}
+        </script>
+    </body>
+    </html>
+    """
+
+    st.success("🎉 Xử lý dữ liệu xong! Mời bạn tải Công Cụ Xuất Ảnh về máy.")
+    st.info("💡 HƯỚNG DẪN: Bấm nút tải bên dưới -> Mở file vừa tải lên -> Bấm nút 'XUẤT ẢNH' để nhận file ZIP chứa toàn bộ ảnh PNG siêu nét.")
+    
+    st.download_button(
+        label="⬇️ TẢI CÔNG CỤ XUẤT ẢNH PNG",
+        data=full_export_system.encode('utf-8'),
+        file_name="Cong_Cu_Xuat_Anh_PNG.html",
+        mime="text/html"
+    )
