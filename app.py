@@ -12,7 +12,7 @@ st.set_page_config(page_title="Phím Hồng Music - VIP Billing", layout="wide")
 LOGO_PATH = "PHÍM HỒNG MUSIC (Nền trắng).jpg"
 
 st.title("🎯 Hệ thống xuất Phiếu Học Phí (Bản Final VIP)")
-st.write("Đã xóa chữ 'Hoc phi' trong mã QR, chỉ để lại duy nhất tên học sinh.")
+st.write("Đã Fix lỗi iPhone: Nhúng trực tiếp mã QR vào file HTML để iOS không chặn ảnh.")
 
 uploaded_file = st.file_uploader("📂 Tải file Excel Danh_Sach_Hoc_Phi.xlsx", type=["xlsx"])
 
@@ -33,7 +33,7 @@ if uploaded_file:
     df = pd.read_excel(uploaded_file).dropna(subset=['Họ và Tên'])
     logo_b64 = get_base64_logo()
     
-    st.success(f"Đã nhận {len(df)} học sinh. Đang chuẩn bị file tải về...")
+    st.success(f"Đã nhận {len(df)} học sinh. Đang vẽ HTML và tải mã QR...")
 
     zip_buffer = io.BytesIO()
     progress_bar = st.progress(0)
@@ -84,10 +84,20 @@ if uploaded_file:
 
             qr_html = ""
             if bank and stk:
-                # SỬA LỖI TẠI ĐÂY: CHỈ ĐỂ DUY NHẤT TÊN HỌC SINH VÀO MÃ QR
+                # Chỉ để duy nhất Tên học sinh
                 add_info = urllib.parse.quote(ten)
                 qr_url = f"https://img.vietqr.io/image/{bank}-{stk}-compact2.png?amount={tong_thanh_toan}&addInfo={add_info}"
-                qr_html = f'<img src="{qr_url}" style="width: 125px; height: 125px; border-radius: 10px;">'
+                
+                # --- FIX LỖI iOS Ở ĐÂY: TẢI ẢNH VÀ NHÚNG BASE64 VÀO HTML ---
+                try:
+                    resp = requests.get(qr_url, timeout=5)
+                    if resp.status_code == 200:
+                        qr_b64 = f"data:image/png;base64,{base64.b64encode(resp.content).decode('utf-8')}"
+                        qr_html = f'<img src="{qr_b64}" style="width: 125px; height: 125px; border-radius: 10px;">'
+                    else:
+                        qr_html = f'<img src="{qr_url}" style="width: 125px; height: 125px; border-radius: 10px;">'
+                except:
+                    qr_html = f'<img src="{qr_url}" style="width: 125px; height: 125px; border-radius: 10px;">'
 
             # --- GIAO DIỆN HOÀN THIỆN ---
             receipt_html = f"""
@@ -168,4 +178,4 @@ if uploaded_file:
             if index == 0:
                 st.markdown(receipt_html.replace('\n', ''), unsafe_allow_html=True)
 
-    st.download_button(label="⬇️ TẢI XUỐNG ZIP PHIẾU HOÀN HẢO", data=zip_buffer.getvalue(), file_name="Phieu_Hoc_Phi_Phim_Hong.zip", mime="application/zip")
+    st.download_button(label="⬇️ TẢI XUỐNG ZIP PHIẾU", data=zip_buffer.getvalue(), file_name="Phieu_Hoc_Phi_Phim_Hong.zip", mime="application/zip")
