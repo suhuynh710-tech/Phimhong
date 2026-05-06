@@ -13,7 +13,7 @@ st.set_page_config(page_title="Phím Hồng Music - Phiếu Học Phí", layout=
 LOGO_PATH = "PHÍM HỒNG MUSIC (Nền trắng).jpg"
 
 st.title("🎯 Hệ thống xuất Phiếu Học Phí")
-st.write("Bản nâng cấp: Tờ phiếu sẽ tự động dài ra nếu nhận xét dài, cam kết 100% không rớt trang!")
+st.write("Đã điều chỉnh chiều ngang, thay font chữ sang Arial và nới rộng không gian để không bị rớt chữ. Giao diện xem trước được giản lược để tránh lỗi.")
 
 uploaded_file = st.file_uploader("📂 Tải file Excel Danh_Sach_Hoc_Phi.xlsx", type=["xlsx"])
 
@@ -23,6 +23,7 @@ def get_base64_logo():
             return f"data:image/jpeg;base64,{base64.b64encode(f.read()).decode()}"
     return ""
 
+# Định nghĩa Icon SVG (Chỉ dùng cho học phí và ngày học)
 icon_receipt = '''<svg viewBox="0 0 24 24" width="22" height="22" fill="#6d5b4b" style="margin-right:12px;"><path d="M18 17H6v-2h12v2zm0-4H6v-2h12v2zm0-4H6V7h12v2zM3 22l1.5-1.5L6 22l1.5-1.5L9 22l1.5-1.5L12 22l1.5-1.5L15 22l1.5-1.5L18 22l1.5-1.5L21 22V2l-1.5 1.5L18 2l-1.5 1.5L15 2l-1.5 1.5L12 2l-1.5 1.5L9 2l-1.5 1.5L6 2 4.5 3.5 3 2v20z"/></svg>'''
 icon_calendar = '''<svg viewBox="0 0 24 24" width="22" height="22" fill="#6d5b4b" style="margin-right:12px;"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 002 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/></svg>'''
 
@@ -41,6 +42,7 @@ if uploaded_file:
         for index, row in df.iterrows():
             ten = str(row['Họ và Tên']).strip()
             
+            # Cập nhật thanh tiến trình
             status_text.text(f"Đang xử lý PDF cho: {ten} ({index + 1}/{total_students})...")
             progress_bar.progress((index + 1) / total_students)
             
@@ -52,6 +54,7 @@ if uploaded_file:
             bank = str(row['Ngân Hàng']).strip()
             stk = str(row['STK']).split('.')[0] if pd.notna(row['STK']) else ""
 
+            # Xử lý Ngày đi học
             date_cols = [c for c in df.columns if '/' in str(c)]
             days_html = ""
             for col in date_cols:
@@ -66,6 +69,7 @@ if uploaded_file:
             if not days_html:
                 days_html = '<span style="color:#aaa; font-style:italic; font-size:14px;">Chưa có buổi học</span>'
 
+            # QR Code lấy trực tiếp hình bằng link (Nhanh và không lỗi)
             qr_html = ""
             if bank and stk and bank != 'nan':
                 add_info = urllib.parse.quote(ten)
@@ -76,18 +80,15 @@ if uploaded_file:
 
             logo_html = f'<div style="margin: 0 auto 15px auto; width: 85px; height: 85px; border-radius: 50%; border: 3px solid white; background-image: url({logo_b64}); background-size: cover; background-position: center; box-shadow: 0 3px 10px rgba(0,0,0,0.2);"></div>' if logo_b64 else ''
 
-            # BÍ QUYẾT LÀ ĐÂY: @page { size: 600px auto; } giúp tờ giấy tự động dài ra nếu cần
+            # Bản thiết kế siêu rộng: 600px x 1350px
             html_template = f"""
             <html>
             <head>
             <meta charset="UTF-8">
             <style>
-                @page {{ 
-                    size: 600px auto; /* Tự động co giãn chiều cao */
-                    margin: 0; 
-                }}
+                @page {{ size: 600px 1350px; margin: 0; }}
                 body {{ font-family: 'Arial', sans-serif; margin: 0; background: #fdfaf6; color: #333; line-height: 1.4; }}
-                .container {{ width: 600px; background: #fdfaf6; padding-bottom: 20px; }} /* Bỏ chiều cao cố định */
+                .container {{ width: 600px; height: 1350px; background: #fdfaf6; position: relative; box-sizing: border-box; }}
                 
                 .header {{ background: linear-gradient(135deg, #bc6c65 0%, #d49a71 100%); color: white; text-align: center; padding: 60px 40px 40px; }}
                 .header h1 {{ font-size: 38px; margin: 15px 0; letter-spacing: 2px; font-weight: 700; text-transform: uppercase; }}
@@ -106,7 +107,7 @@ if uploaded_file:
                 .qr-wrap {{ display: flex; gap: 25px; align-items: center; margin-top: 45px; padding: 25px; border: 2px dashed #d49a71; background: white; border-radius: 20px; }}
                 .stk-val {{ font-size: 22px; color: #bc6c65; font-weight: 800; margin: 8px 0; letter-spacing: 1px; }}
                 
-                .footer {{ text-align: center; padding: 30px 40px; font-size: 16px; color: #9a8a7a; font-style: italic; }}
+                .footer {{ text-align: center; padding: 40px; font-size: 16px; color: #9a8a7a; font-style: italic; position: absolute; bottom: 0; width: 100%; box-sizing:border-box; }}
             </style>
             </head>
             <body>
@@ -168,7 +169,7 @@ if uploaded_file:
             except Exception as e:
                 st.error(f"Lỗi tạo PDF cho {ten}: {e}")
 
-    status_text.text("🎉 Hoàn tất! Đã xử lý xong toàn bộ danh sách. Mời bạn nhấn nút tải về.")
+    status_text.text("🎉 Hoàn tất! Đã xử lý xong toàn bộ danh sách. Mời bạn nhấn nút tải về bên dưới.")
     
     st.download_button(
         label="⬇️ TẢI XUỐNG TOÀN BỘ PHIẾU PDF",
