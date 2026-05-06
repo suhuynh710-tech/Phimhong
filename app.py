@@ -12,7 +12,7 @@ st.set_page_config(page_title="Phím Hồng Music - VIP Billing", layout="wide")
 LOGO_PATH = "PHÍM HỒNG MUSIC (Nền trắng).jpg"
 
 st.title("🎯 Hệ thống xuất Phiếu Học Phí (Bản Final VIP)")
-st.write("Đã đồng bộ font Times New Roman cho Tên học sinh & Lớp Piano, tiêu đề to ở chính giữa.")
+st.write("Đã xóa chữ 'Hoc phi' trong mã QR, chỉ để lại duy nhất tên học sinh.")
 
 uploaded_file = st.file_uploader("📂 Tải file Excel Danh_Sach_Hoc_Phi.xlsx", type=["xlsx"])
 
@@ -22,7 +22,7 @@ def get_base64_logo():
             return f"data:image/jpeg;base64,{base64.b64encode(f.read()).decode()}"
     return ""
 
-# --- ICON SVG SIÊU NÉT (CHỐNG LỖI Ô VUÔNG) ---
+# --- ICON SVG SIÊU NÉT ---
 svg_student = '<svg viewBox="0 0 24 24" width="24" height="24" fill="#6d5b4b" style="margin-right:12px;"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2.06-1.12V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>'
 svg_receipt = '<svg viewBox="0 0 24 24" width="22" height="22" fill="#6d5b4b" style="margin-right:12px;"><path d="M18 17H6v-2h12v2zm0-4H6v-2h12v2zm0-4H6V7h12v2zM3 22l1.5-1.5L6 22l1.5-1.5L9 22l1.5-1.5L12 22l1.5-1.5L15 22l1.5-1.5L18 22l1.5-1.5L21 22V2l-1.5 1.5L18 2l-1.5 1.5L15 2l-1.5 1.5L12 2l-1.5 1.5L9 2l-1.5 1.5L6 2 4.5 3.5 3 2v20z"/></svg>'
 svg_calendar = '<svg viewBox="0 0 24 24" width="22" height="22" fill="#6d5b4b" style="margin-right:12px;"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 002 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/></svg>'
@@ -84,7 +84,8 @@ if uploaded_file:
 
             qr_html = ""
             if bank and stk:
-                add_info = urllib.parse.quote(f"Hoc phi {ten}")
+                # SỬA LỖI TẠI ĐÂY: CHỈ ĐỂ DUY NHẤT TÊN HỌC SINH VÀO MÃ QR
+                add_info = urllib.parse.quote(ten)
                 qr_url = f"https://img.vietqr.io/image/{bank}-{stk}-compact2.png?amount={tong_thanh_toan}&addInfo={add_info}"
                 qr_html = f'<img src="{qr_url}" style="width: 125px; height: 125px; border-radius: 10px;">'
 
@@ -125,46 +126,4 @@ if uploaded_file:
                         </table>
                     </div>
 
-                    <div style="display: flex; gap: 45px; align-items: flex-start; justify-content: center; width: 95%; margin: 0 auto;">
-                        <div style="flex: 1.3;">
-                            <div style="margin-bottom: 25px;">
-                                <div style="font-size: 14px; color: #8e7f72; font-weight: bold; letter-spacing: 1px; margin-bottom: 12px;">NGÀY ĐI HỌC</div>
-                                <div style="text-align: left;">{days_html if days_html else 'Chưa có dữ liệu'}</div>
-                            </div>
-                            <div>
-                                <div style="font-size: 14px; color: #8e7f72; font-weight: bold; margin-bottom: 12px; letter-spacing: 1px;">NHẬN XÉT CỦA GIÁO VIÊN</div>
-                                <div style="background: #fffdf5; border: 1px solid #f2e2b3; border-radius: 12px; padding: 20px; color: #5a4b41; font-style: italic; line-height: 1.6; font-size: 16px;">
-                                    {nhan_xet}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div style="flex: 0.7; display: flex; flex-direction: column; gap: 20px;">
-                            <div style="background: #fdf6ec; border: 2px solid #ecdac8; border-radius: 15px; padding: 20px; text-align: center;">
-                                <div style="font-size: 13px; color: #8e7f72; font-weight: bold;">TỔNG THANH TOÁN</div>
-                                <div style="font-size: 38px; color: #4a2e25; font-weight: 900; margin-top: 10px; font-family: 'Times New Roman', Times, serif;">{tong_thanh_toan:,} đ</div>
-                            </div>
-                            <div style="background: white; border: 2px dashed #d49a71; border-radius: 15px; padding: 20px; text-align: center;">
-                                <div style="font-size: 11px; color: #d49a71; font-weight: bold; margin-bottom: 15px;">QUÉT MÃ THANH TOÁN</div>
-                                {qr_html}
-                                <div style="margin-top: 15px; font-size: 18px; font-weight: 900; color: #bc6c65; text-transform: uppercase;">{bank}</div>
-                                <div style="font-size: 16px; font-weight: bold; color: #4a2e25; margin-top: 5px;">{stk}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div style="text-align: center; margin-top: 55px; font-size: 17px; color: #9a8a7a; font-style: italic;">
-                        {svg_thanks} Trân trọng cảm ơn quý phụ huynh!
-                    </div>
-                </div>
-            </div>
-            """
-
-            full_html = f"""<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"></head><body style="background:#e9ecef; display:flex; justify-content:center; padding:50px 0;">{receipt_html}</body></html>"""
-            safe_name = ten.replace(' ', '_')
-            zip_file.writestr(f"Phieu_{safe_name}.html", full_html.encode('utf-8'))
-
-            if index == 0:
-                st.markdown(receipt_html.replace('\n', ''), unsafe_allow_html=True)
-
-    st.download_button(label="⬇️ TẢI XUỐNG ZIP PHIẾU HOÀN HẢO", data=zip_buffer.getvalue(), file_name="Phieu_Hoc_Phi_Phim_Hong.zip", mime="application/zip")
+                    <div style="display: flex; gap: 45px; align-items: flex-start; justify-content
