@@ -6,13 +6,14 @@ import urllib.parse
 import zipfile
 import io
 import os
+import datetime
 
 st.set_page_config(page_title="Phím Hồng Music - PNG Generator", layout="wide")
 
 LOGO_PATH = "PHÍM HỒNG MUSIC (Nền trắng).jpg"
 
 st.title("🎨 Cỗ Máy Xuất Ảnh PNG - Phím Hồng Music")
-st.write("Bản sửa lỗi: Đảm bảo hiển thị 100% các ngày đi học trên phiếu PNG.")
+st.write("Bản sửa lỗi: Hiển thị ĐẦY ĐỦ ngày đi học, kể cả khi bạn thêm cột mới.")
 
 uploaded_file = st.file_uploader("📂 Tải file Excel Danh_Sach_Hoc_Phi.xlsx", type=["xlsx"])
 
@@ -30,7 +31,8 @@ svg_book = '<svg viewBox="0 0 24 24" width="22" height="22" fill="#6d5b4b" style
 svg_thanks = '<svg viewBox="0 0 24 24" width="20" height="20" fill="#9a8a7a" style="vertical-align:middle; margin-right:8px;"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>'
 
 if uploaded_file:
-    df = pd.read_excel(uploaded_file).dropna(subset=['Họ và Tên'])
+    # Cấu hình đọc Excel: Không tự động parse header thành Date, cứ giữ nguyên là chuỗi
+    df = pd.read_excel(uploaded_file, header=0).dropna(subset=['Họ và Tên'])
     logo_b64 = get_base64_logo()
     
     st.success(f"Đã nhận {len(df)} học sinh. Đang xử lý dữ liệu và thiết kế, đợi 1 xíu nhé...")
@@ -38,6 +40,18 @@ if uploaded_file:
     
     all_receipts_html = ""
     
+    # 1. Tìm các cột Ngày Đi Học một cách thông minh (Có chữ 'T2'..'CN' hoặc chứa '/')
+    date_cols = []
+    for col in df.columns:
+        col_str = str(col).upper()
+        # Nếu cột là ngày tháng dạng datetime, chuyển nó về chuỗi ngày/tháng
+        if isinstance(col, datetime.datetime):
+            col_str = col.strftime('%d/%m')
+            df.rename(columns={col: col_str}, inplace=True)
+            date_cols.append(col_str)
+        elif '/' in col_str or col_str.startswith('T2') or col_str.startswith('T3') or col_str.startswith('T4') or col_str.startswith('T5') or col_str.startswith('T6') or col_str.startswith('T7') or col_str.startswith('CN'):
+            date_cols.append(col)
+
     for index, row in df.iterrows():
         ten = str(row['Họ và Tên']).strip()
         safe_name = ten.replace(' ', '_').replace('(', '').replace(')', '')
@@ -48,7 +62,6 @@ if uploaded_file:
         so_buoi = int(row['Tổng buổi học']) if pd.notna(row['Tổng buổi học']) else 0
         tong_tien_goc = int(row['Tổng học phí']) if pd.notna(row['Tổng học phí']) else (hoc_phi * so_buoi)
         
-        # Tiền sách
         tien_sach = 0
         tien_sach_html = ""
         if 'Tiền sách' in df.columns:
@@ -70,19 +83,14 @@ if uploaded_file:
         bank = str(row['Ngân Hàng']).strip()
         stk = str(row['STK']).split('.')[0] if pd.notna(row['STK']) else ""
 
-        # --- SỬA LỖI NGÀY HỌC Ở ĐÂY ---
-        # Lấy tất cả các cột có thể là ngày học (thường có dấu / hoặc định dạng ngày tháng)
-        date_cols = [c for c in df.columns if '/' in str(c)]
-        days_html = ""
-        
-        # Tạo thẻ div bọc ngoài để gom nhóm ngày học
-        days_html += '<div style="display: flex; flex-wrap: wrap; gap: 8px;">'
+        # --- XỬ LÝ NGÀY HỌC ---
+        days_html = '<div style="display: flex; flex-wrap: wrap; gap: 8px;">'
+        has_day = False
         
         for col in date_cols:
-            # Kiểm tra giá trị ô có phải là "X" hoặc "x" không (bỏ qua khoảng trắng)
             cell_val = str(row[col]).strip().upper()
             if cell_val == 'X':
-                # Phân tích tiêu đề cột (Ví dụ: "T2 01/05" hoặc chỉ "01/05")
+                has_day = True
                 col_name = str(col).strip()
                 parts = col_name.split(' ')
                 
@@ -91,38 +99,35 @@ if uploaded_file:
                 
                 if len(parts) > 1:
                     thu = parts[0]
-                    # Format ngày tháng cho đẹp (01/05 thay vì 1/5)
                     try:
                         d_parts = parts[1].split('/')
-                        if len(d_parts) == 2:
+                        if len(d_parts) >= 2:
                             day_month = f"{int(d_parts[0]):02d}/{int(d_parts[1]):02d}"
                         else:
                             day_month = parts[1]
                     except:
                         day_month = parts[1]
                 else:
-                    # Nếu chỉ có "01/05"
                     try:
                         d_parts = col_name.split('/')
-                        if len(d_parts) == 2:
+                        if len(d_parts) >= 2:
                             day_month = f"{int(d_parts[0]):02d}/{int(d_parts[1]):02d}"
                     except:
                         pass
                 
-                # HTML cho 1 cục ngày học (có class để render ảnh tốt hơn)
                 days_html += f'''
-                <div class="day-pill" style="background:#f7f1e9; border:1px solid #e0d1c1; border-radius:8px; padding:6px 12px; display:flex; flex-direction:column; align-items:center; justify-content:center; min-width: 45px;">
+                <div style="background:#f7f1e9; border:1px solid #e0d1c1; border-radius:8px; padding:6px 12px; display:inline-block; text-align:center;">
                     <div style="font-size:10px; color:#8e7f72; margin-bottom:2px; line-height:1;">{thu}</div>
                     <div style="font-size:13px; font-weight:bold; color:#4a2e25; line-height:1;">{day_month}</div>
                 </div>
                 '''
         
-        days_html += '</div>' # Đóng div gom nhóm
+        days_html += '</div>'
 
-        # Nếu không có ngày nào được đánh dấu X
-        if 'class="day-pill"' not in days_html:
+        if not has_day:
             days_html = '<div style="color:#aaa; font-style:italic; font-size:14px; padding: 5px 0;">Chưa có dữ liệu điểm danh</div>'
 
+        # QR Code
         qr_html = ""
         if bank and stk:
             add_info = urllib.parse.quote(ten)
@@ -195,96 +200,3 @@ if uploaded_file:
                         </div>
                         <div style="background: white; border: 2px dashed #d49a71; border-radius: 15px; padding: 20px; text-align: center;">
                             <div style="font-size: 11px; color: #d49a71; font-weight: bold; margin-bottom: 15px;">QUÉT MÃ THANH TOÁN</div>
-                            <div style="display: flex; justify-content: center;">{qr_html}</div>
-                            <div style="margin-top: 15px; font-size: 18px; font-weight: 900; color: #bc6c65; text-transform: uppercase;">{bank}</div>
-                            <div style="font-size: 16px; font-weight: bold; color: #4a2e25; margin-top: 5px;">{stk}</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div style="text-align: center; margin-top: 55px; font-size: 17px; color: #9a8a7a; font-style: italic;">
-                    {svg_thanks} Trân trọng cảm ơn quý phụ huynh!
-                </div>
-            </div>
-        </div>
-        """
-        all_receipts_html += receipt_html
-
-    # TẠO FILE WEB ĐỂ XUẤT ẢNH PNG
-    full_export_system = f"""
-    <!DOCTYPE html>
-    <html lang="vi">
-    <head>
-        <meta charset="UTF-8">
-        <title>Cỗ Máy Xuất Ảnh PNG - Phím Hồng</title>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-        <style>
-            body {{ background: #2c3e50; font-family: Arial, sans-serif; text-align: center; padding: 40px; margin: 0; }}
-            .control-panel {{ background: white; padding: 30px 50px; border-radius: 15px; margin-bottom: 40px; display: inline-block; box-shadow: 0 10px 20px rgba(0,0,0,0.2); }}
-            button {{ background: linear-gradient(135deg, #bc6c65 0%, #d49a71 100%); color: white; border: none; padding: 18px 40px; font-size: 20px; border-radius: 10px; cursor: pointer; font-weight: bold; transition: 0.3s; box-shadow: 0 4px 10px rgba(188, 108, 101, 0.4);}}
-            button:hover {{ transform: scale(1.05); }}
-            button:disabled {{ background: #999; cursor: not-allowed; transform: none; box-shadow: none;}}
-        </style>
-    </head>
-    <body>
-        <div class="control-panel">
-            <h2 style="margin-top: 0; color: #333;">CÔNG CỤ XUẤT ẢNH PNG</h2>
-            <p style="color: #666; font-size: 16px;">Đã tải dữ liệu của <b>{len(df)}</b> học sinh.</p>
-            <button onclick="startExport()" id="btn-export">🚀 BẤM VÀO ĐÂY ĐỂ TẢI ZIP ẢNH PNG</button>
-            <p id="status" style="color: #bc6c65; font-weight: bold; margin-top: 20px; font-size: 18px;"></p>
-        </div>
-        
-        <div id="receipt-container" style="display: flex; flex-direction: column; gap: 30px; align-items: center;">
-            {all_receipts_html}
-        </div>
-
-        <script>
-            async function startExport() {{
-                const btn = document.getElementById('btn-export');
-                const status = document.getElementById('status');
-                btn.disabled = true;
-                btn.innerText = "⏳ Đang vẽ ảnh, đừng tắt trang nhé...";
-
-                const zip = new JSZip();
-                const receipts = document.querySelectorAll('.receipt-card');
-
-                for(let i=0; i<receipts.length; i++) {{
-                    let name = receipts[i].getAttribute('data-name');
-                    status.innerText = "Đang xử lý ảnh: " + name + " (" + (i+1) + "/" + receipts.length + ")";
-
-                    // Chụp ảnh thẻ HTML thành PNG
-                    const canvas = await html2canvas(receipts[i], {{
-                        scale: 2, 
-                        useCORS: true,
-                        backgroundColor: "#ffffff",
-                        logging: false
-                    }});
-
-                    const imgData = canvas.toDataURL("image/png").split(',')[1];
-                    zip.file("Phieu_Hoc_Phi_" + name + ".png", imgData, {{base64: true}});
-                }}
-
-                status.innerText = "📦 Đang nén thành file ZIP...";
-                zip.generateAsync({{type:"blob"}}).then(function(content) {{
-                    saveAs(content, "Tat_Ca_Phieu_PNG.zip");
-                    status.innerText = "✅ XUẤT ẢNH THÀNH CÔNG! BẠN KIỂM TRA THƯ MỤC DOWNLOAD NHÉ.";
-                    btn.innerText = "🚀 XUẤT LẠI ẢNH NẾU CẦN";
-                    btn.disabled = false;
-                }});
-            }}
-        </script>
-    </body>
-    </html>
-    """
-
-    st.success("🎉 Xử lý dữ liệu xong! Lỗi ngày học đã được khắc phục.")
-    st.info("💡 HƯỚNG DẪN: Bấm nút tải bên dưới -> Mở file vừa tải lên bằng Chrome -> Bấm nút 'XUẤT ẢNH' để nhận file ZIP chứa ảnh PNG.")
-    
-    st.download_button(
-        label="⬇️ TẢI CÔNG CỤ XUẤT ẢNH PNG",
-        data=full_export_system.encode('utf-8'),
-        file_name="Cong_Cu_Xuat_Anh_PNG.html",
-        mime="text/html"
-    )
