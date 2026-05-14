@@ -13,7 +13,7 @@ st.set_page_config(page_title="Phím Hồng Music - PNG Generator", layout="wide
 LOGO_PATH = "PHÍM HỒNG MUSIC (Nền trắng).jpg"
 
 st.title("🎨 Cỗ Máy Xuất Ảnh PNG - Phím Hồng Music")
-st.write("Bản sửa lỗi: Hiển thị ĐẦY ĐỦ ngày đi học, kể cả khi bạn thêm cột mới.")
+st.write("Bản thiết kế cuối cùng: Hiển thị ĐẦY ĐỦ ngày đi học, không lỗi font.")
 
 uploaded_file = st.file_uploader("📂 Tải file Excel Danh_Sach_Hoc_Phi.xlsx", type=["xlsx"])
 
@@ -31,20 +31,17 @@ svg_book = '<svg viewBox="0 0 24 24" width="22" height="22" fill="#6d5b4b" style
 svg_thanks = '<svg viewBox="0 0 24 24" width="20" height="20" fill="#9a8a7a" style="vertical-align:middle; margin-right:8px;"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>'
 
 if uploaded_file:
-    # Cấu hình đọc Excel: Không tự động parse header thành Date, cứ giữ nguyên là chuỗi
     df = pd.read_excel(uploaded_file, header=0).dropna(subset=['Họ và Tên'])
     logo_b64 = get_base64_logo()
     
-    st.success(f"Đã nhận {len(df)} học sinh. Đang xử lý dữ liệu và thiết kế, đợi 1 xíu nhé...")
+    st.success(f"Đã nhận {len(df)} học sinh. Đang xử lý dữ liệu và thiết kế...")
     progress_bar = st.progress(0)
     
     all_receipts_html = ""
     
-    # 1. Tìm các cột Ngày Đi Học một cách thông minh (Có chữ 'T2'..'CN' hoặc chứa '/')
     date_cols = []
     for col in df.columns:
         col_str = str(col).upper()
-        # Nếu cột là ngày tháng dạng datetime, chuyển nó về chuỗi ngày/tháng
         if isinstance(col, datetime.datetime):
             col_str = col.strftime('%d/%m')
             df.rename(columns={col: col_str}, inplace=True)
@@ -83,7 +80,6 @@ if uploaded_file:
         bank = str(row['Ngân Hàng']).strip()
         stk = str(row['STK']).split('.')[0] if pd.notna(row['STK']) else ""
 
-        # --- XỬ LÝ NGÀY HỌC ---
         days_html = '<div style="display: flex; flex-wrap: wrap; gap: 8px;">'
         has_day = False
         
@@ -127,7 +123,6 @@ if uploaded_file:
         if not has_day:
             days_html = '<div style="color:#aaa; font-style:italic; font-size:14px; padding: 5px 0;">Chưa có dữ liệu điểm danh</div>'
 
-        # QR Code
         qr_html = ""
         if bank and stk:
             add_info = urllib.parse.quote(ten)
@@ -142,7 +137,6 @@ if uploaded_file:
         if not qr_html:
             qr_html = '<div style="font-size:12px; color:#999; padding:40px 0; border:1px dashed #ccc; border-radius:8px; text-align:center;">CHƯA CÓ QR</div>'
 
-        # TEMPLATE HTML
         receipt_html = f"""
         <div class="receipt-card" data-name="{safe_name}" style="width: 850px; background: white; font-family: Arial, sans-serif; margin: 0 auto 40px auto; border-radius: 20px; overflow: hidden; box-sizing: border-box; position: relative;">
             
@@ -183,20 +177,4 @@ if uploaded_file:
                     <div style="flex: 1.3;">
                         <div style="margin-bottom: 25px;">
                             <div style="font-size: 14px; color: #8e7f72; font-weight: bold; letter-spacing: 1px; margin-bottom: 12px;">NGÀY ĐI HỌC</div>
-                            <div style="width: 100%;">{days_html}</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 14px; color: #8e7f72; font-weight: bold; margin-bottom: 12px; letter-spacing: 1px;">NHẬN XÉT CỦA GIÁO VIÊN</div>
-                            <div style="background: #fffdf5; border: 1px solid #f2e2b3; border-radius: 12px; padding: 20px; color: #5a4b41; font-style: italic; line-height: 1.6; font-size: 16px;">
-                                {nhan_xet}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div style="flex: 0.7; display: flex; flex-direction: column; gap: 20px;">
-                        <div style="background: #fdf6ec; border: 2px solid #ecdac8; border-radius: 15px; padding: 20px; text-align: center;">
-                            <div style="font-size: 13px; color: #8e7f72; font-weight: bold;">TỔNG THANH TOÁN</div>
-                            <div style="font-size: 38px; color: #4a2e25; font-weight: 900; margin-top: 10px; font-family: 'Times New Roman', Times, serif;">{tong_thanh_toan:,} đ</div>
-                        </div>
-                        <div style="background: white; border: 2px dashed #d49a71; border-radius: 15px; padding: 20px; text-align: center;">
-                            <div style="font-size: 11px; color: #d49a71; font-weight: bold; margin-bottom: 15px;">QUÉT MÃ THANH TOÁN</div>
+                            <div style="width: 100%;">{days_html}
