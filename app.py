@@ -177,4 +177,112 @@ if uploaded_file:
                     <div style="flex: 1.3;">
                         <div style="margin-bottom: 25px;">
                             <div style="font-size: 14px; color: #8e7f72; font-weight: bold; letter-spacing: 1px; margin-bottom: 12px;">NGÀY ĐI HỌC</div>
-                            <div style="width: 100%;">{days_html}
+                            <div style="width: 100%;">{days_html}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 14px; color: #8e7f72; font-weight: bold; margin-bottom: 12px; letter-spacing: 1px;">NHẬN XÉT CỦA GIÁO VIÊN</div>
+                            <div style="background: #fffdf5; border: 1px solid #f2e2b3; border-radius: 12px; padding: 20px; color: #5a4b41; font-style: italic; line-height: 1.6; font-size: 16px;">
+                                {nhan_xet}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="flex: 0.7; display: flex; flex-direction: column; gap: 20px;">
+                        <div style="background: #fdf6ec; border: 2px solid #ecdac8; border-radius: 15px; padding: 20px; text-align: center;">
+                            <div style="font-size: 13px; color: #8e7f72; font-weight: bold;">TỔNG THANH TOÁN</div>
+                            <div style="font-size: 38px; color: #4a2e25; font-weight: 900; margin-top: 10px; font-family: 'Times New Roman', Times, serif;">{tong_thanh_toan:,} đ</div>
+                        </div>
+                        <div style="background: white; border: 2px dashed #d49a71; border-radius: 15px; padding: 20px; text-align: center;">
+                            <div style="font-size: 11px; color: #d49a71; font-weight: bold; margin-bottom: 15px;">QUÉT MÃ THANH TOÁN</div>
+                            <div style="display: flex; justify-content: center;">{qr_html}</div>
+                            <div style="margin-top: 15px; font-size: 18px; font-weight: 900; color: #bc6c65; text-transform: uppercase;">{bank}</div>
+                            <div style="font-size: 16px; font-weight: bold; color: #4a2e25; margin-top: 5px;">{stk}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="text-align: center; margin-top: 55px; font-size: 17px; color: #9a8a7a; font-style: italic;">
+                    {svg_thanks} Trân trọng cảm ơn quý phụ huynh!
+                </div>
+            </div>
+        </div>
+        """
+        all_receipts_html += receipt_html
+
+    full_export_system = f"""
+    <!DOCTYPE html>
+    <html lang="vi">
+    <head>
+        <meta charset="UTF-8">
+        <title>Cỗ Máy Xuất Ảnh PNG - Phím Hồng</title>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+        <style>
+            body {{ background: #2c3e50; font-family: Arial, sans-serif; text-align: center; padding: 40px; margin: 0; }}
+            .control-panel {{ background: white; padding: 30px 50px; border-radius: 15px; margin-bottom: 40px; display: inline-block; box-shadow: 0 10px 20px rgba(0,0,0,0.2); }}
+            button {{ background: linear-gradient(135deg, #bc6c65 0%, #d49a71 100%); color: white; border: none; padding: 18px 40px; font-size: 20px; border-radius: 10px; cursor: pointer; font-weight: bold; transition: 0.3s; box-shadow: 0 4px 10px rgba(188, 108, 101, 0.4);}}
+            button:hover {{ transform: scale(1.05); }}
+            button:disabled {{ background: #999; cursor: not-allowed; transform: none; box-shadow: none;}}
+            #receipt-container {{ display: flex; flex-direction: column; align-items: center; gap: 40px; }}
+        </style>
+    </head>
+    <body>
+        <div class="control-panel">
+            <h2 style="margin-top: 0; color: #333;">CÔNG CỤ XUẤT ẢNH PNG</h2>
+            <p style="color: #666; font-size: 16px;">Đã tải dữ liệu của <b>{len(df)}</b> học sinh.</p>
+            <button onclick="startExport()" id="btn-export">🚀 BẤM VÀO ĐÂY ĐỂ TẢI ZIP ẢNH PNG</button>
+            <p id="status" style="color: #bc6c65; font-weight: bold; margin-top: 20px; font-size: 18px;"></p>
+        </div>
+        
+        <div id="receipt-container">
+            {all_receipts_html}
+        </div>
+
+        <script>
+            async function startExport() {{
+                const btn = document.getElementById('btn-export');
+                const status = document.getElementById('status');
+                btn.disabled = true;
+                btn.innerText = "⏳ Đang vẽ ảnh, đừng tắt trang nhé...";
+
+                const zip = new JSZip();
+                const receipts = document.querySelectorAll('.receipt-card');
+
+                for(let i=0; i<receipts.length; i++) {{
+                    let name = receipts[i].getAttribute('data-name');
+                    status.innerText = "Đang xử lý ảnh: " + name + " (" + (i+1) + "/" + receipts.length + ")";
+
+                    const canvas = await html2canvas(receipts[i], {{
+                        scale: 2, 
+                        useCORS: true,
+                        backgroundColor: "#ffffff",
+                        logging: false
+                    }});
+
+                    const imgData = canvas.toDataURL("image/png").split(',')[1];
+                    zip.file("Phieu_Hoc_Phi_" + name + ".png", imgData, {{base64: true}});
+                }}
+
+                status.innerText = "📦 Đang nén thành file ZIP...";
+                zip.generateAsync({{type:"blob"}}).then(function(content) {{
+                    saveAs(content, "Tat_Ca_Phieu_PNG.zip");
+                    status.innerText = "✅ XUẤT ẢNH THÀNH CÔNG! BẠN KIỂM TRA THƯ MỤC DOWNLOAD NHÉ.";
+                    btn.innerText = "🚀 XUẤT LẠI ẢNH NẾU CẦN";
+                    btn.disabled = false;
+                }});
+            }}
+        </script>
+    </body>
+    </html>
+    """
+
+    st.success("🎉 Xử lý dữ liệu xong! Lỗi ngày học đã được khắc phục.")
+    st.info("💡 HƯỚNG DẪN: Bấm nút tải bên dưới -> Mở file vừa tải lên bằng Chrome -> Bấm nút 'XUẤT ẢNH' để nhận file ZIP chứa ảnh PNG.")
+    
+    st.download_button(
+        label="⬇️ TẢI CÔNG CỤ XUẤT ẢNH PNG",
+        data=full_export_system.encode('utf-8'),
+        file_name="Cong_Cu_Xuat_Anh_PNG.html",
+        mime="text/html"
+    )
