@@ -13,7 +13,7 @@ st.set_page_config(page_title="Phím Hồng Music - PNG Generator", layout="wide
 LOGO_PATH = "PHÍM HỒNG MUSIC (Nền trắng).jpg"
 
 st.title("🎨 Cỗ Máy Xuất Ảnh PNG - Phím Hồng Music")
-st.write("Bản sửa lỗi: Nhận xét để trống nếu Excel không có dữ liệu. Đã Fix lỗi ngày học.")
+st.write("Đã vá lỗi copy thiếu code. Hệ thống tự động nhận diện tất cả các cột ngày tháng bạn thêm vào Excel.")
 
 uploaded_file = st.file_uploader("📂 Tải file Excel Danh_Sach_Hoc_Phi.xlsx", type=["xlsx"])
 
@@ -31,7 +31,6 @@ svg_book = '<svg viewBox="0 0 24 24" width="22" height="22" fill="#6d5b4b" style
 svg_thanks = '<svg viewBox="0 0 24 24" width="20" height="20" fill="#9a8a7a" style="vertical-align:middle; margin-right:8px;"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>'
 
 if uploaded_file:
-    # Cấu hình đọc Excel
     df = pd.read_excel(uploaded_file, header=0).dropna(subset=['Họ và Tên'])
     logo_b64 = get_base64_logo()
     
@@ -40,7 +39,7 @@ if uploaded_file:
     
     all_receipts_html = ""
     
-    # 1. Tìm các cột Ngày Đi Học
+    # Tìm các cột Ngày Đi Học
     date_cols = []
     for col in df.columns:
         col_str = str(col).upper()
@@ -80,14 +79,14 @@ if uploaded_file:
         
         tong_thanh_toan = tong_tien_goc + tien_sach
 
-        # --- XỬ LÝ NHẬN XÉT: NẾU TRỐNG THÌ ĐỂ TRỐNG ---
-        raw_nhan_xet = row['Nhận Xét Của GV']
+        # Xử lý nhận xét
+        raw_nhan_xet = row['Nhận Xét Của GV'] if 'Nhận Xét Của GV' in df.columns else ""
         nhan_xet = str(raw_nhan_xet).strip() if (pd.notna(raw_nhan_xet) and str(raw_nhan_xet).lower() != 'nan') else ""
 
-        bank = str(row['Ngân Hàng']).strip()
-        stk = str(row['STK']).split('.')[0] if pd.notna(row['STK']) else ""
+        bank = str(row['Ngân Hàng']).strip() if 'Ngân Hàng' in df.columns else ""
+        stk = str(row['STK']).split('.')[0] if ('STK' in df.columns and pd.notna(row['STK'])) else ""
 
-        # --- XỬ LÝ NGÀY HỌC ---
+        # Xử lý Ngày học
         days_html = '<div style="display: flex; flex-wrap: wrap; gap: 8px;">'
         has_day = False
         for col in date_cols:
@@ -110,7 +109,7 @@ if uploaded_file:
 
         # QR Code
         qr_html = ""
-        if bank and stk:
+        if bank and stk and bank != 'nan':
             add_info = urllib.parse.quote(ten)
             qr_url = f"https://img.vietqr.io/image/{bank}-{stk}-compact2.png?amount={tong_thanh_toan}&addInfo={add_info}"
             try:
@@ -119,7 +118,11 @@ if uploaded_file:
                     qr_b64 = f"data:image/png;base64,{base64.b64encode(resp.content).decode()}"
                     qr_html = f'<img src="{qr_b64}" style="width: 125px; height: 125px; border-radius: 10px;">'
             except: pass
+            
+        if not qr_html:
+            qr_html = '<div style="font-size:12px; color:#999; padding:40px 0; border:1px dashed #ccc; border-radius:8px; text-align:center;">CHƯA CÓ QR</div>'
 
+        # HTML CỦA MỘT PHIẾU
         receipt_html = f"""
         <div class="receipt-card" data-name="{safe_name}" style="width: 850px; background: white; font-family: Arial, sans-serif; margin: 0 auto 40px auto; border-radius: 20px; overflow: hidden; box-sizing: border-box; position: relative;">
             <div style="background: linear-gradient(135deg, #bc6c65 0%, #d49a71 100%); padding: 35px 50px; display: flex; align-items: center; justify-content: space-between; color: white;">
@@ -130,7 +133,7 @@ if uploaded_file:
                 </div>
                 <div style="text-align: center; min-width: 180px;">
                     <div style="font-size: 20px; font-weight: bold; margin-bottom: 8px;">Tháng 5 / 2026</div>
-                    <div style="font-size: 28px; font-weight: 900; background: rgba(255,255,255,0.25); padding: 10px 25px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.5); font-family: 'Times New Roman', Times, serif;">Lớp {lop}</div>
+                    <div style="font-size: 28px; font-weight: 900; background: rgba(255,255,255,0.25); padding: 10px 25px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.5); font-family: 'Times New Roman', Times, serif; text-transform: capitalize;">Lớp {lop}</div>
                 </div>
             </div>
             <div style="padding: 40px 60px;">
@@ -141,5 +144,4 @@ if uploaded_file:
                             <td style="padding: 15px 0; font-weight: 900; color: #2c1a16; text-align: right; font-size: 30px; font-family: 'Times New Roman', Times, serif;">{ten}</td>
                         </tr>
                         <tr style="border-top: 1px dashed #e2d5c4;">
-                            <td style="padding: 15px 0; color: #7a6b5d; display:flex; align-items:center;">{svg_receipt} Học phí / buổi:</td>
-                            <td style="padding: 15px 0; font-weight: bold; color: #2c1a
+                            <td style="padding: 15px 0
