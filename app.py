@@ -13,7 +13,7 @@ st.set_page_config(page_title="Phím Hồng Music - PNG Generator", layout="wide
 LOGO_PATH = "PHÍM HỒNG MUSIC (Nền trắng).jpg"
 
 st.title("🎨 Cỗ Máy Xuất Ảnh PNG - Bản Phân Loại Học Phí")
-st.write("Cập nhật: Tự động phân loại Học phí (buổi) hoặc Học phí (tháng) theo từng học sinh dựa trên file Excel.")
+st.write("Đã sửa lỗi cú pháp. Tự động nhận diện Học phí (buổi) hoặc Học phí (tháng) dựa theo file Excel hàng dọc mới.")
 
 uploaded_file = st.file_uploader("📂 Tải file Excel Danh_Sach_Hoc_Phi_Moi.xlsx", type=["xlsx"])
 
@@ -22,6 +22,23 @@ def get_base64_logo():
         with open(LOGO_PATH, "rb") as f:
             return f"data:image/jpeg;base64,{base64.b64encode(f.read()).decode()}"
     return ""
+
+# Hàm chuyển đổi số thông minh chống lỗi dữ liệu trống (NaN) từ Excel
+def clean_number(val):
+    if pd.isna(val):
+        return 0
+    s = str(val).strip().replace(' ', '').replace(',', '')
+    if s.lower() in ['', 'nan', 'none']:
+        return 0
+    if '.' in s:
+        s = s.split('.')[0]
+    try:
+        return int(s)
+    except:
+        try:
+            return int(float(s))
+        except:
+            return 0
 
 # --- ICON SVG SIÊU NÉT ---
 svg_student = '<svg viewBox="0 0 24 24" width="24" height="24" fill="#6d5b4b" style="margin-right:12px;"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2.06-1.12V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>'
@@ -52,7 +69,7 @@ if uploaded_file:
         st.error("❌ Không tìm thấy cột 'Họ và Tên' trong trang danh sách!")
     else:
         df_students = df_students.dropna(subset=[name_col])
-        st.success(f"🎉 Đã kết nối thành công: '{student_sheet}' và '{attendance_sheet}'!")
+        st.success(f"🎉 Kết nối thành công Sheet dữ liệu hàng dọc!")
         progress_bar = st.progress(0)
         
         all_receipts_html = ""
@@ -74,7 +91,7 @@ if uploaded_file:
             
             lop = str(row[lop_col]).strip() if lop_col and pd.notna(row[lop_col]) else "Piano"
             
-            # --- ĐẾM SỐ BUỔI ĐI HỌC HÀNG DỌC ---
+            # --- TRÍCH XUẤT NGÀY ĐI HỌC VÀ ĐẾM SỐ BUỔI HÀNG DỌC ---
             so_buoi = 0
             days_html = '<div style="display: flex; flex-wrap: wrap; gap: 8px;">'
             has_day = False
@@ -92,10 +109,23 @@ if uploaded_file:
                     thu = str(att_row[thu_col]).strip() if thu_col and pd.notna(att_row[thu_col]) else ""
                     ngay_val = att_row[ngay_col]
                     
+                    # Định dạng hiển thị ngày tháng (Cắt bỏ năm và giờ nếu có)
                     if isinstance(ngay_val, (datetime.datetime, datetime.date)):
                         day_month = ngay_val.strftime('%d/%m')
                     else:
-                        day_month = str(ngay_val).strip()
+                        s_date = str(ngay_val).strip().split(' ')[0]
+                        if '-' in s_date:
+                            try:
+                                p = s_date.split('-')
+                                day_month = f"{int(p[2]):02d}/{int(p[1]):02d}"
+                            except: day_month = s_date
+                        elif '/' in s_date:
+                            try:
+                                p = s_date.split('/')
+                                day_month = f"{int(p[0]):02d}/{int(p[1]):02d}"
+                            except: day_month = s_date
+                        else:
+                            day_month = s_date
                     
                     days_html += f'''
                     <div style="background:#f7f1e9; border:1px solid #e0d1c1; border-radius:8px; padding:6px 12px; display:inline-block; text-align:center;">
@@ -107,9 +137,9 @@ if uploaded_file:
             if not has_day:
                 days_html = '<div style="color:#aaa; font-style:italic; font-size:14px; padding: 5px 0;">Chưa có dữ liệu điểm danh</div>'
             
-            # --- BỘ PHÂN LOẠI HỌC PHÍ BUỔI / THÁNG ---
-            hoc_phi_buoi = int(float(str(row[hp_buoi_col]).strip().replace(',', ''))) if hp_buoi_col and pd.notna(row[hp_buoi_col]) and str(row[hp_buoi_col]).strip() != '' else 0
-            hoc_phi_thang = int(float(str(row[hp_thang_col]).strip().replace(',', ''))) if hp_thang_col and pd.notna(row[hp_thang_col]) and str(row[hp_thang_col]).strip() != '' else 0
+            # --- PHÂN LOẠI HỌC PHÍ THÁNG / BUỔI CHỐNG LỖI ---
+            hoc_phi_buoi = clean_number(row[hp_buoi_col]) if hp_buoi_col else 0
+            hoc_phi_thang = clean_number(row[hp_thang_col]) if hp_thang_col else 0
             
             if hoc_phi_thang > 0:
                 label_hoc_phi = "Học phí (tháng)"
@@ -129,7 +159,7 @@ if uploaded_file:
                 val = row[phi_khac_col]
                 if pd.notna(val) and str(val).strip() != '':
                     try:
-                        phi_khac = int(float(str(val).strip().replace(',', '')))
+                        phi_khac = clean_number(val)
                         if phi_khac != 0:
                             ghi_chu_text = ""
                             raw_gc = str(row[ghi_chu_col]).strip() if ghi_chu_col and pd.notna(row[ghi_chu_col]) else ""
@@ -167,7 +197,7 @@ if uploaded_file:
             bank = str(row[ngan_hang_col]).strip() if ngan_hang_col else ""
             stk = str(row[stk_col]).split('.')[0] if (stk_col and pd.notna(row[stk_col])) else ""
 
-            # Tạo ảnh QR
+            # Tạo ảnh QR (Chỉ chứa Tên Học Sinh)
             qr_html = ""
             if bank and stk and bank != 'nan':
                 add_info = urllib.parse.quote(ten)
@@ -185,7 +215,6 @@ if uploaded_file:
             if not qr_html:
                 qr_html = '<div style="font-size:12px; color:#999; padding:40px 0; border:1px dashed #ccc; border-radius:8px; text-align:center;">CHƯA CÓ QR</div>'
 
-            # HTML CỦA MỘT PHIẾU
             receipt_html = f"""
             <div class="receipt-card" data-name="{safe_name}" style="width: 850px; background: white; font-family: Arial, sans-serif; margin: 0 auto 40px auto; border-radius: 20px; overflow: hidden; box-sizing: border-box; position: relative;">
                 <div style="background: linear-gradient(135deg, #bc6c65 0%, #d49a71 100%); padding: 35px 50px; display: flex; align-items: center; justify-content: space-between; color: white;">
@@ -233,7 +262,6 @@ if uploaded_file:
                         </div>
                         <div style="flex: 0.7; display: flex; flex-direction: column; gap: 20px;">
                             <div style="background: #fdf6ec; border: 2px solid #ecdac8; border-radius: 15px; padding: 20px; text-align: center;">
-                                <div style="font-size: 13px; color: #8e7f72; font-weight: bold;">TỔNG THANH TOÁN</div>
                                 <div style="font-size: 38px; color: #4a2e25; font-weight: 900; margin-top: 10px; font-family: 'Times New Roman', serif;">{tong_thanh_toan:,} đ</div>
                             </div>
                             <div style="background: white; border: 2px dashed #d49a71; border-radius: 15px; padding: 20px; text-align: center;">
@@ -252,8 +280,6 @@ if uploaded_file:
             """
             all_receipts_html += receipt_html
 
-        st.success("🎉 Đồng bộ dữ liệu thành công!")
-        
         component_html = f"""
         <!DOCTYPE html>
         <html lang="vi">
@@ -287,7 +313,7 @@ if uploaded_file:
                     const btn = document.getElementById('exportBtn');
                     const status = document.getElementById('status');
                     btn.disabled = true;
-                    btn.innerHTML = "⏳ Đang xử lý ảnh, vui lòng giữ tab này...";
+                    btn.innerHTML = "⏳ Đang vẽ ảnh, vui lòng giữ tab này...";
                     status.innerText = "Đang khởi động...";
 
                     const zip = new JSZip();
