@@ -13,7 +13,7 @@ st.set_page_config(page_title="Phím Hồng Music - PNG Generator", layout="wide
 LOGO_PATH = "PHÍM HỒNG MUSIC (Nền trắng).jpg"
 
 st.title("🎨 Cỗ Máy Xuất Ảnh PNG - Phím Hồng Music")
-st.write("Bản Chốt Hạ: Upload Excel xong là xuất thẳng ra PNG ngay trên web. Có tính năng Phí Khác (+/-).")
+st.write("Bản Fix Kế Toán: Tự động trừ tiền nếu ghi chú có chữ 'nghỉ'/'trừ' và minh bạch phép tính trên phiếu.")
 
 uploaded_file = st.file_uploader("📂 Tải file Excel Danh_Sach_Hoc_Phi.xlsx", type=["xlsx"])
 
@@ -28,6 +28,7 @@ svg_student = '<svg viewBox="0 0 24 24" width="24" height="24" fill="#6d5b4b" st
 svg_receipt = '<svg viewBox="0 0 24 24" width="22" height="22" fill="#6d5b4b" style="margin-right:12px;"><path d="M18 17H6v-2h12v2zm0-4H6v-2h12v2zm0-4H6V7h12v2zM3 22l1.5-1.5L6 22l1.5-1.5L9 22l1.5-1.5L12 22l1.5-1.5L15 22l1.5-1.5L18 22l1.5-1.5L21 22V2l-1.5 1.5L18 2l-1.5 1.5L15 2l-1.5 1.5L12 2l-1.5 1.5L9 2l-1.5 1.5L6 2 4.5 3.5 3 2v20z"/></svg>'
 svg_calendar = '<svg viewBox="0 0 24 24" width="22" height="22" fill="#6d5b4b" style="margin-right:12px;"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 002 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/></svg>'
 svg_extra = '<svg viewBox="0 0 24 24" width="22" height="22" fill="#6d5b4b" style="margin-right:12px;"><path d="M11 17h2v-4h4v-2h-4V7h-2v4H7v2h4v4zm1 5q-2.075 0-3.9-.788-1.825-.787-3.175-2.162-1.35-1.35-2.137-3.175Q2 14.05 2 12q0-2.075.788-3.9.787-1.825 2.137-3.175 1.35-1.35 3.175-2.137Q9.925 2 12 2q2.075 0 3.9.788 1.825.787 3.175 2.137 1.35 1.35 2.138 3.175Q22 9.925 22 12q0 2.075-.788 3.9-.787 1.825-2.138 3.175-1.35 1.35-3.175 2.162Q14.075 22 12 22Z"/></svg>'
+svg_money = '<svg viewBox="0 0 24 24" width="22" height="22" fill="#6d5b4b" style="margin-right:12px;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-1h-1c-.55 0-1-.45-1-1v-3c0-.55.45-1 1-1h3v-1h-3V9h2V8h2v1h1c.55 0 1 .45 1 1v3c0 .55-.45 1-1 1h-3v1h3v1h-2v1z"/></svg>'
 svg_thanks = '<svg viewBox="0 0 24 24" width="20" height="20" fill="#9a8a7a" style="vertical-align:middle; margin-right:8px;"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>'
 
 if uploaded_file:
@@ -60,33 +61,59 @@ if uploaded_file:
         so_buoi = int(row['Tổng buổi học']) if pd.notna(row['Tổng buổi học']) else 0
         tong_tien_goc = int(row['Tổng học phí']) if pd.notna(row['Tổng học phí']) else (hoc_phi * so_buoi)
         
-        # --- XỬ LÝ PHÍ KHÁC VÀ GHI CHÚ ---
+        # --- BỘ PHÂN TÍCH PHÍ KHÁC VÀ GHI CHÚ THÔNG MINH ---
         phi_khac = 0
         phi_khac_html = ""
+        tong_tien_goc_html = ""
+        
         if 'Phí khác' in df.columns:
             val = row['Phí khác']
             if pd.notna(val) and str(val).strip() != '':
                 try:
-                    phi_khac = int(float(val))
+                    # Tiền xử lý để loại bỏ dấu chấm, phẩy làm lỗi tính toán
+                    if isinstance(val, (int, float)):
+                        phi_khac = int(val)
+                    else:
+                        s = str(val).strip().replace(' ', '')
+                        if ',' in s and '.' in s: s = s.split('.')[0].replace(',', '')
+                        elif ',' in s: s = s.replace(',', '')
+                        elif '.' in s:
+                            parts = s.split('.')
+                            s = s.replace('.', '') if len(parts[-1]) == 3 else parts[0]
+                        phi_khac = int(s)
+                    
                     if phi_khac != 0:
                         ghi_chu_text = ""
-                        if 'Ghi chú' in df.columns:
-                            raw_gc = row['Ghi chú']
-                            if pd.notna(raw_gc) and str(raw_gc).strip() != "":
-                                ghi_chu_text = f" <span style='font-size: 16px; font-style: italic; color: #a49688;'>({str(raw_gc).strip()})</span>"
+                        raw_gc = str(row['Ghi chú']).strip() if 'Ghi chú' in df.columns and pd.notna(row['Ghi chú']) else ""
                         
+                        if raw_gc:
+                            ghi_chu_text = f" <span style='font-size: 16px; font-style: italic; color: #a49688;'>({raw_gc})</span>"
+                            # Nếu phụ huynh ghi chú có chữ trừ/nghỉ nhưng lại nhập số dương, tự động sửa thành số âm
+                            if phi_khac > 0 and any(kw in raw_gc.lower() for kw in ['trừ', 'nghỉ', 'giảm']):
+                                phi_khac = -phi_khac
+
                         # Xử lý màu sắc (+) màu chuẩn, (-) màu đỏ tươi
                         d_color = "#bc6c65" if phi_khac > 0 else "#ff0000"
                         d_sign = "+" if phi_khac > 0 else "-"
                         
+                        # Hiện dòng Thành Tiền Học Phí nếu có phí khác để minh bạch phép tính
+                        tong_tien_goc_html = f'''
+                        <tr style="border-top: 1px dashed #e2d5c4; background: rgba(247,241,233,0.5);">
+                            <td style="padding: 12px 0; color: #7a6b5d; display:flex; align-items:center;">{svg_money} Thành tiền (Tiền học):</td>
+                            <td style="padding: 12px 0; font-weight: bold; color: #4a2e25; text-align: right;">{tong_tien_goc:,} đ</td>
+                        </tr>
+                        '''
+
                         phi_khac_html = f'''
                         <tr style="border-top: 1px dashed #e2d5c4;">
                             <td style="padding: 15px 0; color: #7a6b5d; display:flex; align-items:center;">{svg_extra} Phí khác{ghi_chu_text}:</td>
                             <td style="padding: 15px 0; font-weight: 900; color: {d_color}; text-align: right; font-size: 24px; font-family: 'Times New Roman', serif;">{d_sign} {abs(phi_khac):,} đ</td>
                         </tr>
                         '''
-                except: pass
+                except Exception as e:
+                    pass
         
+        # PHÉP TÍNH CHÍNH XÁC
         tong_thanh_toan = tong_tien_goc + phi_khac
         if tong_thanh_toan < 0: tong_thanh_toan = 0
 
@@ -117,10 +144,9 @@ if uploaded_file:
         if not has_day:
             days_html = '<div style="color:#aaa; font-style:italic; font-size:14px; padding: 5px 0;">Chưa có dữ liệu điểm danh</div>'
 
-        # QR Code - Nhúng nội tuyến dạng Base64
+        # QR Code (Chỉ để Tên Học Sinh)
         qr_html = ""
         if bank and stk and bank != 'nan':
-            # QUAN TRỌNG: Chỉ lấy tên học sinh (như lệnh đã dặn)
             add_info = urllib.parse.quote(ten)
             qr_url = f"https://img.vietqr.io/image/{bank}-{stk}-compact2.png?amount={tong_thanh_toan}&addInfo={add_info}"
             try:
@@ -128,7 +154,10 @@ if uploaded_file:
                 if resp.status_code == 200:
                     qr_b64 = f"data:image/png;base64,{base64.b64encode(resp.content).decode('utf-8')}"
                     qr_html = f'<img src="{qr_b64}" style="width: 125px; height: 125px; border-radius: 10px;">'
-            except: pass
+                else:
+                    qr_html = f'<img src="{qr_url}" style="width: 125px; height: 125px; border-radius: 10px;">'
+            except:
+                qr_html = f'<img src="{qr_url}" style="width: 125px; height: 125px; border-radius: 10px;">'
             
         if not qr_html:
             qr_html = '<div style="font-size:12px; color:#999; padding:40px 0; border:1px dashed #ccc; border-radius:8px; text-align:center;">CHƯA CÓ QR</div>'
@@ -162,6 +191,7 @@ if uploaded_file:
                             <td style="padding: 15px 0; color: #7a6b5d; display:flex; align-items:center;">{svg_calendar} Số buổi học:</td>
                             <td style="padding: 15px 0; font-weight: bold; color: #2c1a16; text-align: right;">{so_buoi} buổi</td>
                         </tr>
+                        {tong_tien_goc_html}
                         {phi_khac_html}
                     </table>
                 </div>
@@ -199,7 +229,6 @@ if uploaded_file:
         """
         all_receipts_html += receipt_html
 
-    # --- NHÚNG MÃ TRỰC TIẾP VÀO STREAMLIT (CẢ CẢNH BÁO LỖI HTML) ---
     st.success(f"🎉 Hoàn tất đọc dữ liệu của {len(df)} học sinh!")
     
     component_html = f"""
@@ -216,7 +245,6 @@ if uploaded_file:
             .btn-export:hover {{ transform: scale(1.03); box-shadow: 0 10px 25px rgba(188, 108, 101, 0.6); }}
             .btn-export:disabled {{ background: #ccc; cursor: not-allowed; transform: none; box-shadow: none; color: #666; }}
             #status {{ margin-top: 20px; font-size: 18px; font-weight: bold; color: #bc6c65; }}
-            /* Ẩn các phiếu khỏi tầm nhìn nhưng không dùng display:none để canvas vẫn chụp được ảnh */
             #hidden-receipts {{ position: absolute; left: -9999px; top: 0; opacity: 0; pointer-events: none; }}
         </style>
     </head>
@@ -270,5 +298,4 @@ if uploaded_file:
     </html>
     """
     
-    # Render giao diện này NGAY TRONG Streamlit (Cao 250px đủ chứa nút bấm)
     components.html(component_html, height=250, scrolling=False)
