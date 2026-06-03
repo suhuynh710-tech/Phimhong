@@ -12,10 +12,10 @@ st.set_page_config(page_title="Phím Hồng Music - PNG Generator", layout="wide
 
 LOGO_PATH = "PHÍM HỒNG MUSIC (Nền trắng).jpg"
 
-st.title("🎨 Cỗ Máy Xuất Ảnh PNG - Phím Hồng Music")
-st.write("Bản Fix Cuối Cùng: Nhận diện chuẩn xác 100% các cột Phí Khác, Ghi Chú bất chấp chữ hoa/chữ thường.")
+st.title("🎨 Cỗ Máy Xuất Ảnh PNG - Bản Phân Loại Học Phí")
+st.write("Cập nhật: Tự động phân loại Học phí (buổi) hoặc Học phí (tháng) theo từng học sinh dựa trên file Excel.")
 
-uploaded_file = st.file_uploader("📂 Tải file Excel Danh_Sach_Hoc_Phi.xlsx", type=["xlsx"])
+uploaded_file = st.file_uploader("📂 Tải file Excel Danh_Sach_Hoc_Phi_Moi.xlsx", type=["xlsx"])
 
 def get_base64_logo():
     if os.path.exists(LOGO_PATH):
@@ -32,270 +32,292 @@ svg_money = '<svg viewBox="0 0 24 24" width="22" height="22" fill="#6d5b4b" styl
 svg_thanks = '<svg viewBox="0 0 24 24" width="20" height="20" fill="#9a8a7a" style="vertical-align:middle; margin-right:8px;"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>'
 
 if uploaded_file:
-    df = pd.read_excel(uploaded_file, header=0).dropna(subset=['Họ và Tên'])
+    xl = pd.ExcelFile(uploaded_file)
+    sheet_names = xl.sheet_names
+    
+    student_sheet = next((s for s in sheet_names if 'học sinh' in s.lower()), sheet_names[0])
+    attendance_sheet = next((s for s in sheet_names if 'sheet1' in s.lower() or 'điểm danh' in s.lower()), sheet_names[1] if len(sheet_names) > 1 else sheet_names[0])
+    
+    df_students = pd.read_excel(uploaded_file, sheet_name=student_sheet)
+    df_attendance = pd.read_excel(uploaded_file, sheet_name=attendance_sheet)
+    
     logo_b64 = get_base64_logo()
     
-    st.info(f"⏳ Đã nhận {len(df)} học sinh. Đang vẽ ảnh, chờ xíu...")
-    progress_bar = st.progress(0)
+    df_students.columns = [str(c).strip() for c in df_students.columns]
+    df_attendance.columns = [str(c).strip() for c in df_attendance.columns]
     
-    all_receipts_html = ""
+    name_col = next((col for col in df_students.columns if 'họ và tên' in col.lower()), None)
     
-    # --- CÔNG CỤ TÌM TÊN CỘT THÔNG MINH (Chống lỗi Hoa/Thường) ---
-    phi_khac_col = next((col for col in df.columns if str(col).strip().lower() == 'phí khác'), None)
-    ghi_chu_col = next((col for col in df.columns if str(col).strip().lower() == 'ghi chú'), None)
-    nhan_xet_col = next((col for col in df.columns if str(col).strip().lower() == 'nhận xét của gv'), None)
-    ngan_hang_col = next((col for col in df.columns if str(col).strip().lower() == 'ngân hàng'), None)
-    stk_col = next((col for col in df.columns if str(col).strip().lower() == 'stk'), None)
-    
-    # Bắt cột Ngày đi học
-    date_cols = []
-    for col in df.columns:
-        col_str = str(col).upper()
-        if isinstance(col, datetime.datetime):
-            col_str = col.strftime('%d/%m')
-            df.rename(columns={col: col_str}, inplace=True)
-            date_cols.append(col_str)
-        elif '/' in col_str or col_str.startswith('T2') or col_str.startswith('T3') or col_str.startswith('T4') or col_str.startswith('T5') or col_str.startswith('T6') or col_str.startswith('T7') or col_str.startswith('CN'):
-            date_cols.append(col)
-
-    for index, row in df.iterrows():
-        ten = str(row['Họ và Tên']).strip()
-        safe_name = ten.replace(' ', '_').replace('(', '').replace(')', '')
-        progress_bar.progress((index + 1) / len(df))
+    if not name_col:
+        st.error("❌ Không tìm thấy cột 'Họ và Tên' trong trang danh sách!")
+    else:
+        df_students = df_students.dropna(subset=[name_col])
+        st.success(f"🎉 Đã kết nối thành công: '{student_sheet}' và '{attendance_sheet}'!")
+        progress_bar = st.progress(0)
         
-        lop = str(row['Lớp']).strip() if pd.notna(row['Lớp']) else "Piano"
-        hoc_phi = int(row['Học Phí (buổi)']) if pd.notna(row['Học Phí (buổi)']) else 0
-        so_buoi = int(row['Tổng buổi học']) if pd.notna(row['Tổng buổi học']) else 0
-        tong_tien_goc = int(row['Tổng học phí']) if pd.notna(row['Tổng học phí']) else (hoc_phi * so_buoi)
+        all_receipts_html = ""
         
-        # --- XỬ LÝ PHÍ KHÁC VÀ GHI CHÚ (ĐÃ FIX LỖI) ---
-        phi_khac = 0
-        phi_khac_html = ""
-        tong_tien_goc_html = ""
-        
-        if phi_khac_col:
-            val = row[phi_khac_col]
-            if pd.notna(val) and str(val).strip() != '':
-                try:
-                    if isinstance(val, (int, float)):
-                        phi_khac = int(val)
-                    else:
-                        s = str(val).strip().replace(' ', '').replace(',', '')
-                        if '.' in s: s = s.split('.')[0]
-                        phi_khac = int(s)
-                    
-                    if phi_khac != 0:
-                        ghi_chu_text = ""
-                        raw_gc = str(row[ghi_chu_col]).strip() if ghi_chu_col and pd.notna(row[ghi_chu_col]) else ""
-                        
-                        if raw_gc and raw_gc.lower() != 'nan':
-                            ghi_chu_text = f" <span style='font-size: 16px; font-style: italic; color: #a49688;'>({raw_gc})</span>"
-                            # Sửa thành số âm nếu người dùng lỡ nhập số dương nhưng ghi chú là "trừ"
-                            if phi_khac > 0 and any(kw in raw_gc.lower() for kw in ['trừ', 'nghỉ', 'giảm']):
-                                phi_khac = -phi_khac
+        # Cấu hình tìm cột thông minh
+        lop_col = next((col for col in df_students.columns if col.lower() == 'lớp'), None)
+        hp_buoi_col = next((col for col in df_students.columns if 'học phí (buổi)' in col.lower()), None)
+        hp_thang_col = next((col for col in df_students.columns if 'học phí (tháng)' in col.lower()), None)
+        phi_khac_col = next((col for col in df_students.columns if 'phí khác' in col.lower()), None)
+        ghi_chu_col = next((col for col in df_students.columns if 'ghi chú' in col.lower()), None)
+        nhan_xet_col = next((col for col in df_students.columns if 'nhận xét của gv' in col.lower()), None)
+        ngan_hang_col = next((col for col in df_students.columns if 'ngân hàng' in col.lower()), None)
+        stk_col = next((col for col in df_students.columns if 'stk' in col.lower()), None)
 
-                        d_color = "#bc6c65" if phi_khac > 0 else "#ff0000"
-                        d_sign = "+" if phi_khac > 0 else "-"
-                        
-                        tong_tien_goc_html = f'''
-                        <tr style="border-top: 1px dashed #e2d5c4; background: rgba(247,241,233,0.5);">
-                            <td style="padding: 12px 0; color: #7a6b5d; display:flex; align-items:center;">{svg_money} Thành tiền (Tiền học):</td>
-                            <td style="padding: 12px 0; font-weight: bold; color: #4a2e25; text-align: right;">{tong_tien_goc:,} đ</td>
-                        </tr>
-                        '''
-
-                        phi_khac_html = f'''
-                        <tr style="border-top: 1px dashed #e2d5c4;">
-                            <td style="padding: 15px 0; color: #7a6b5d; display:flex; align-items:center;">{svg_extra} Phí khác{ghi_chu_text}:</td>
-                            <td style="padding: 15px 0; font-weight: 900; color: {d_color}; text-align: right; font-size: 24px; font-family: 'Times New Roman', serif;">{d_sign} {abs(phi_khac):,} đ</td>
-                        </tr>
-                        '''
-                except Exception as e:
-                    pass
-        
-        # --- TỔNG THANH TOÁN = TIỀN HỌC + PHÍ KHÁC ---
-        tong_thanh_toan = tong_tien_goc + phi_khac
-        if tong_thanh_toan < 0: tong_thanh_toan = 0
-
-        raw_nhan_xet = row[nhan_xet_col] if nhan_xet_col else ""
-        nhan_xet = str(raw_nhan_xet).strip() if (pd.notna(raw_nhan_xet) and str(raw_nhan_xet).lower() != 'nan') else ""
-
-        bank = str(row[ngan_hang_col]).strip() if ngan_hang_col else ""
-        stk = str(row[stk_col]).split('.')[0] if (stk_col and pd.notna(row[stk_col])) else ""
-
-        # Ngày đi học
-        days_html = '<div style="display: flex; flex-wrap: wrap; gap: 8px;">'
-        has_day = False
-        for col in date_cols:
-            cell_val = str(row[col]).strip().upper()
-            if cell_val == 'X':
-                has_day = True
-                col_name = str(col).strip()
-                parts = col_name.split(' ')
-                thu = parts[0] if len(parts) > 1 else ""
-                day_month = parts[1] if len(parts) > 1 else col_name
-                days_html += f'''
-                <div style="background:#f7f1e9; border:1px solid #e0d1c1; border-radius:8px; padding:6px 12px; display:inline-block; text-align:center;">
-                    <div style="font-size:10px; color:#8e7f72; margin-bottom:2px; line-height:1;">{thu}</div>
-                    <div style="font-size:13px; font-weight:bold; color:#4a2e25; line-height:1;">{day_month}</div>
-                </div>
-                '''
-        days_html += '</div>'
-        if not has_day:
-            days_html = '<div style="color:#aaa; font-style:italic; font-size:14px; padding: 5px 0;">Chưa có dữ liệu điểm danh</div>'
-
-        # QR Code (Chỉ lấy Tên Học Sinh)
-        qr_html = ""
-        if bank and stk and bank != 'nan':
-            add_info = urllib.parse.quote(ten)
-            qr_url = f"https://img.vietqr.io/image/{bank}-{stk}-compact2.png?amount={tong_thanh_toan}&addInfo={add_info}"
-            try:
-                resp = requests.get(qr_url, timeout=5)
-                if resp.status_code == 200:
-                    qr_b64 = f"data:image/png;base64,{base64.b64encode(resp.content).decode('utf-8')}"
-                    qr_html = f'<img src="{qr_b64}" style="width: 125px; height: 125px; border-radius: 10px;">'
-                else:
-                    qr_html = f'<img src="{qr_url}" style="width: 125px; height: 125px; border-radius: 10px;">'
-            except:
-                qr_html = f'<img src="{qr_url}" style="width: 125px; height: 125px; border-radius: 10px;">'
+        for index, row in df_students.iterrows():
+            ten = str(row[name_col]).strip()
+            safe_name = ten.replace(' ', '_').replace('(', '').replace(')', '')
+            progress_bar.progress((index + 1) / len(df_students))
             
-        if not qr_html:
-            qr_html = '<div style="font-size:12px; color:#999; padding:40px 0; border:1px dashed #ccc; border-radius:8px; text-align:center;">CHƯA CÓ QR</div>'
+            lop = str(row[lop_col]).strip() if lop_col and pd.notna(row[lop_col]) else "Piano"
+            
+            # --- ĐẾM SỐ BUỔI ĐI HỌC HÀNG DỌC ---
+            so_buoi = 0
+            days_html = '<div style="display: flex; flex-wrap: wrap; gap: 8px;">'
+            has_day = False
+            
+            att_col = next((col for col in df_attendance.columns if ten.lower() in str(col).lower()), None)
+            if att_col:
+                present_rows = df_attendance[df_attendance[att_col].astype(str).str.strip().str.upper() == 'X']
+                so_buoi = len(present_rows)
+                
+                thu_col = next((c for c in df_attendance.columns if 'THỨ' in c.upper()), None)
+                ngay_col = next((c for c in df_attendance.columns if 'NGÀY' in c.upper()), None)
+                
+                for _, att_row in present_rows.iterrows():
+                    has_day = True
+                    thu = str(att_row[thu_col]).strip() if thu_col and pd.notna(att_row[thu_col]) else ""
+                    ngay_val = att_row[ngay_col]
+                    
+                    if isinstance(ngay_val, (datetime.datetime, datetime.date)):
+                        day_month = ngay_val.strftime('%d/%m')
+                    else:
+                        day_month = str(ngay_val).strip()
+                    
+                    days_html += f'''
+                    <div style="background:#f7f1e9; border:1px solid #e0d1c1; border-radius:8px; padding:6px 12px; display:inline-block; text-align:center;">
+                        <div style="font-size:10px; color:#8e7f72; margin-bottom:2px; line-height:1;">{thu}</div>
+                        <div style="font-size:13px; font-weight:bold; color:#4a2e25; line-height:1;">{day_month}</div>
+                    </div>
+                    '''
+            days_html += '</div>'
+            if not has_day:
+                days_html = '<div style="color:#aaa; font-style:italic; font-size:14px; padding: 5px 0;">Chưa có dữ liệu điểm danh</div>'
+            
+            # --- BỘ PHÂN LOẠI HỌC PHÍ BUỔI / THÁNG ---
+            hoc_phi_buoi = int(float(str(row[hp_buoi_col]).strip().replace(',', ''))) if hp_buoi_col and pd.notna(row[hp_buoi_col]) and str(row[hp_buoi_col]).strip() != '' else 0
+            hoc_phi_thang = int(float(str(row[hp_thang_col]).strip().replace(',', ''))) if hp_thang_col and pd.notna(row[hp_thang_col]) and str(row[hp_thang_col]).strip() != '' else 0
+            
+            if hoc_phi_thang > 0:
+                label_hoc_phi = "Học phí (tháng)"
+                hoc_phi_display = hoc_phi_thang
+                tong_tien_goc = hoc_phi_thang
+            else:
+                label_hoc_phi = "Học phí (buổi)"
+                hoc_phi_display = hoc_phi_buoi
+                tong_tien_goc = hoc_phi_buoi * so_buoi
+            
+            # Xử lý phần phí khác và ghi chú toán học
+            phi_khac = 0
+            phi_khac_html = ""
+            tong_tien_goc_html = ""
+            
+            if phi_khac_col:
+                val = row[phi_khac_col]
+                if pd.notna(val) and str(val).strip() != '':
+                    try:
+                        phi_khac = int(float(str(val).strip().replace(',', '')))
+                        if phi_khac != 0:
+                            ghi_chu_text = ""
+                            raw_gc = str(row[ghi_chu_col]).strip() if ghi_chu_col and pd.notna(row[ghi_chu_col]) else ""
+                            
+                            if raw_gc and raw_gc.lower() != 'nan':
+                                ghi_chu_text = f" <span style='font-size: 16px; font-style: italic; color: #a49688;'>({raw_gc})</span>"
+                                if phi_khac > 0 and any(kw in raw_gc.lower() for kw in ['trừ', 'nghỉ', 'giảm']):
+                                    phi_khac = -phi_khac
 
-        # HTML CỦA MỘT PHIẾU
-        receipt_html = f"""
-        <div class="receipt-card" data-name="{safe_name}" style="width: 850px; background: white; font-family: Arial, sans-serif; margin: 0 auto 40px auto; border-radius: 20px; overflow: hidden; box-sizing: border-box; position: relative;">
-            <div style="background: linear-gradient(135deg, #bc6c65 0%, #d49a71 100%); padding: 35px 50px; display: flex; align-items: center; justify-content: space-between; color: white;">
-                <div style="width: 90px; height: 90px; border-radius: 50%; border: 3px solid white; background-color: #fff; background-image: url('{logo_b64}'); background-size: cover; background-position: center; flex-shrink: 0;"></div>
-                <div style="text-align: center; flex-grow: 1; padding: 0 20px;">
-                    <div style="font-size: 16px; letter-spacing: 3px; font-weight: bold; opacity: 0.9; margin-bottom: 5px; text-transform: uppercase;">Lớp Nhạc Phím Hồng</div>
-                    <h1 style="margin: 0; font-size: 44px; font-weight: 900; letter-spacing: 2px; font-family: 'Times New Roman', Times, serif; text-transform: uppercase; text-shadow: 1px 1px 4px rgba(0,0,0,0.2);">Phiếu Học Phí</h1>
+                            d_color = "#bc6c65" if phi_khac > 0 else "#ff0000"
+                            d_sign = "+" if phi_khac > 0 else "-"
+                            
+                            tong_tien_goc_html = f'''
+                            <tr style="border-top: 1px dashed #e2d5c4; background: rgba(247,241,233,0.5);">
+                                <td style="padding: 12px 0; color: #7a6b5d; display:flex; align-items:center;">{svg_money} Thành tiền (Tiền học):</td>
+                                <td style="padding: 12px 0; font-weight: bold; color: #4a2e25; text-align: right;">{tong_tien_goc:,} đ</td>
+                            </tr>
+                            '''
+
+                            phi_khac_html = f'''
+                            <tr style="border-top: 1px dashed #e2d5c4;">
+                                <td style="padding: 15px 0; color: #7a6b5d; display:flex; align-items:center;">{svg_extra} Phí khác{ghi_chu_text}:</td>
+                                <td style="padding: 15px 0; font-weight: 900; color: {d_color}; text-align: right; font-size: 24px; font-family: 'Times New Roman', serif;">{d_sign} {abs(phi_khac):,} đ</td>
+                            </tr>
+                            '''
+                    except: pass
+            
+            # TỔNG THANH TOÁN CUỐI CÙNG
+            tong_thanh_toan = tong_tien_goc + phi_khac
+            if tong_thanh_toan < 0: tong_thanh_toan = 0
+
+            raw_nhan_xet = row[nhan_xet_col] if nhan_xet_col else ""
+            nhan_xet = str(raw_nhan_xet).strip() if (pd.notna(raw_nhan_xet) and str(raw_nhan_xet).lower() != 'nan') else ""
+
+            bank = str(row[ngan_hang_col]).strip() if ngan_hang_col else ""
+            stk = str(row[stk_col]).split('.')[0] if (stk_col and pd.notna(row[stk_col])) else ""
+
+            # Tạo ảnh QR
+            qr_html = ""
+            if bank and stk and bank != 'nan':
+                add_info = urllib.parse.quote(ten)
+                qr_url = f"https://img.vietqr.io/image/{bank}-{stk}-compact2.png?amount={tong_thanh_toan}&addInfo={add_info}"
+                try:
+                    resp = requests.get(qr_url, timeout=5)
+                    if resp.status_code == 200:
+                        qr_b64 = f"data:image/png;base64,{base64.b64encode(resp.content).decode('utf-8')}"
+                        qr_html = f'<img src="{qr_b64}" style="width: 125px; height: 125px; border-radius: 10px;">'
+                    else:
+                        qr_html = f'<img src="{qr_url}" style="width: 125px; height: 125px; border-radius: 10px;">'
+                except:
+                    qr_html = f'<img src="{qr_url}" style="width: 125px; height: 125px; border-radius: 10px;">'
+                
+            if not qr_html:
+                qr_html = '<div style="font-size:12px; color:#999; padding:40px 0; border:1px dashed #ccc; border-radius:8px; text-align:center;">CHƯA CÓ QR</div>'
+
+            # HTML CỦA MỘT PHIẾU
+            receipt_html = f"""
+            <div class="receipt-card" data-name="{safe_name}" style="width: 850px; background: white; font-family: Arial, sans-serif; margin: 0 auto 40px auto; border-radius: 20px; overflow: hidden; box-sizing: border-box; position: relative;">
+                <div style="background: linear-gradient(135deg, #bc6c65 0%, #d49a71 100%); padding: 35px 50px; display: flex; align-items: center; justify-content: space-between; color: white;">
+                    <div style="width: 90px; height: 90px; border-radius: 50%; border: 3px solid white; background-color: #fff; background-image: url('{logo_b64}'); background-size: cover; background-position: center; flex-shrink: 0;"></div>
+                    <div style="text-align: center; flex-grow: 1; padding: 0 20px;">
+                        <div style="font-size: 16px; letter-spacing: 3px; font-weight: bold; opacity: 0.9; margin-bottom: 5px; text-transform: uppercase;">Lớp Nhạc Phím Hồng</div>
+                        <h1 style="margin: 0; font-size: 44px; font-weight: 900; letter-spacing: 2px; font-family: 'Times New Roman', Times, serif; text-transform: uppercase; text-shadow: 1px 1px 4px rgba(0,0,0,0.2);">Phiếu Học Phí</h1>
+                    </div>
+                    <div style="text-align: center; min-width: 180px;">
+                        <div style="font-size: 20px; font-weight: bold; margin-bottom: 8px;">Tháng 5 / 2026</div>
+                        <div style="font-size: 28px; font-weight: 900; background: rgba(255,255,255,0.25); padding: 10px 25px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.5); font-family: 'Times New Roman', Times, serif; text-transform: capitalize;">Lớp {lop}</div>
+                    </div>
                 </div>
-                <div style="text-align: center; min-width: 180px;">
-                    <div style="font-size: 20px; font-weight: bold; margin-bottom: 8px;">Tháng 5 / 2026</div>
-                    <div style="font-size: 28px; font-weight: 900; background: rgba(255,255,255,0.25); padding: 10px 25px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.5); font-family: 'Times New Roman', Times, serif; text-transform: capitalize;">Lớp {lop}</div>
-                </div>
-            </div>
-            <div style="padding: 40px 60px;">
-                <div style="background: #fdfaf6; border: 1px solid #f2e2b3; border-radius: 15px; padding: 30px 45px; margin: 0 auto 35px auto; width: 85%;">
-                    <table style="width: 100%; border-collapse: collapse; font-size: 20px;">
-                        <tr>
-                            <td style="padding: 15px 0; color: #7a6b5d; display:flex; align-items:center;">{svg_student} Học sinh:</td>
-                            <td style="padding: 15px 0; font-weight: 900; color: #2c1a16; text-align: right; font-size: 30px; font-family: 'Times New Roman', Times, serif;">{ten}</td>
-                        </tr>
-                        <tr style="border-top: 1px dashed #e2d5c4;">
-                            <td style="padding: 15px 0; color: #7a6b5d; display:flex; align-items:center;">{svg_receipt} Học phí / buổi:</td>
-                            <td style="padding: 15px 0; font-weight: bold; color: #2c1a16; text-align: right;">{hoc_phi:,} đ</td>
-                        </tr>
-                        <tr style="border-top: 1px dashed #e2d5c4;">
-                            <td style="padding: 15px 0; color: #7a6b5d; display:flex; align-items:center;">{svg_calendar} Số buổi học:</td>
-                            <td style="padding: 15px 0; font-weight: bold; color: #2c1a16; text-align: right;">{so_buoi} buổi</td>
-                        </tr>
-                        {tong_tien_goc_html}
-                        {phi_khac_html}
-                    </table>
-                </div>
-                <div style="display: flex; gap: 45px; align-items: flex-start; justify-content: center; width: 95%; margin: 0 auto;">
-                    <div style="flex: 1.3;">
-                        <div style="margin-bottom: 25px;">
-                            <div style="font-size: 14px; color: #8e7f72; font-weight: bold; letter-spacing: 1px; margin-bottom: 12px;">NGÀY ĐI HỌC</div>
-                            <div style="width: 100%;">{days_html}</div>
+                <div style="padding: 40px 60px;">
+                    <div style="background: #fdfaf6; border: 1px solid #f2e2b3; border-radius: 15px; padding: 30px 45px; margin: 0 auto 35px auto; width: 85%;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 20px;">
+                            <tr>
+                                <td style="padding: 15px 0; color: #7a6b5d; display:flex; align-items:center;">{svg_student} Học sinh:</td>
+                                <td style="padding: 15px 0; font-weight: 900; color: #2c1a16; text-align: right; font-size: 30px; font-family: 'Times New Roman', Times, serif;">{ten}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 15px 0; color: #7a6b5d; display:flex; align-items:center; border-top: 1px dashed #e2d5c4;">{svg_receipt} {label_hoc_phi}:</td>
+                                <td style="padding: 15px 0; font-weight: bold; color: #2c1a16; text-align: right; border-top: 1px dashed #e2d5c4;">{hoc_phi_display:,} đ</td>
+                            </tr>
+                            <tr style="border-top: 1px dashed #e2d5c4;">
+                                <td style="padding: 15px 0; color: #7a6b5d; display:flex; align-items:center;">{svg_calendar} Số buổi học:</td>
+                                <td style="padding: 15px 0; font-weight: bold; color: #2c1a16; text-align: right;">{so_buoi} buổi</td>
+                            </tr>
+                            {tong_tien_goc_html}
+                            {phi_khac_html}
+                        </table>
+                    </div>
+                    <div style="display: flex; gap: 45px; align-items: flex-start; justify-content: center; width: 95%; margin: 0 auto;">
+                        <div style="flex: 1.3;">
+                            <div style="margin-bottom: 25px;">
+                                <div style="font-size: 14px; color: #8e7f72; font-weight: bold; letter-spacing: 1px; margin-bottom: 12px;">NGÀY ĐI HỌC</div>
+                                <div style="width: 100%;">{days_html}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 14px; color: #8e7f72; font-weight: bold; letter-spacing: 1px; margin-bottom: 12px;">NHẬN XÉT CỦA GIÁO VIÊN</div>
+                                <div style="background: #fffdf5; border: 1px solid #f2e2b3; border-radius: 12px; padding: 20px; color: #5a4b41; font-style: italic; line-height: 1.6; font-size: 16px; min-height: 20px;">
+                                    {nhan_xet}
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <div style="font-size: 14px; color: #8e7f72; font-weight: bold; letter-spacing: 1px; margin-bottom: 12px;">NHẬN XÉT CỦA GIÁO VIÊN</div>
-                            <div style="background: #fffdf5; border: 1px solid #f2e2b3; border-radius: 12px; padding: 20px; color: #5a4b41; font-style: italic; line-height: 1.6; font-size: 16px; min-height: 20px;">
-                                {nhan_xet}
+                        <div style="flex: 0.7; display: flex; flex-direction: column; gap: 20px;">
+                            <div style="background: #fdf6ec; border: 2px solid #ecdac8; border-radius: 15px; padding: 20px; text-align: center;">
+                                <div style="font-size: 13px; color: #8e7f72; font-weight: bold;">TỔNG THANH TOÁN</div>
+                                <div style="font-size: 38px; color: #4a2e25; font-weight: 900; margin-top: 10px; font-family: 'Times New Roman', serif;">{tong_thanh_toan:,} đ</div>
+                            </div>
+                            <div style="background: white; border: 2px dashed #d49a71; border-radius: 15px; padding: 20px; text-align: center;">
+                                <div style="font-size: 11px; color: #d49a71; font-weight: bold; margin-bottom: 15px;">QUÉT MÃ THANH TOÁN</div>
+                                <div style="display: flex; justify-content: center;">{qr_html}</div>
+                                <div style="margin-top: 15px; font-size: 18px; font-weight: 900; color: #bc6c65; text-transform: uppercase;">{bank if bank != 'nan' else ''}</div>
+                                <div style="font-size: 16px; font-weight: bold; color: #4a2e25; margin-top: 5px;">{stk if stk != 'nan' else ''}</div>
                             </div>
                         </div>
                     </div>
-                    <div style="flex: 0.7; display: flex; flex-direction: column; gap: 20px;">
-                        <div style="background: #fdf6ec; border: 2px solid #ecdac8; border-radius: 15px; padding: 20px; text-align: center;">
-                            <div style="font-size: 13px; color: #8e7f72; font-weight: bold;">TỔNG THANH TOÁN</div>
-                            <div style="font-size: 38px; color: #4a2e25; font-weight: 900; margin-top: 10px; font-family: 'Times New Roman', serif;">{tong_thanh_toan:,} đ</div>
-                        </div>
-                        <div style="background: white; border: 2px dashed #d49a71; border-radius: 15px; padding: 20px; text-align: center;">
-                            <div style="font-size: 11px; color: #d49a71; font-weight: bold; margin-bottom: 15px;">QUÉT MÃ THANH TOÁN</div>
-                            <div style="display: flex; justify-content: center;">{qr_html}</div>
-                            <div style="margin-top: 15px; font-size: 18px; font-weight: 900; color: #bc6c65; text-transform: uppercase;">{bank if bank != 'nan' else ''}</div>
-                            <div style="font-size: 16px; font-weight: bold; color: #4a2e25; margin-top: 5px;">{stk if stk != 'nan' else ''}</div>
-                        </div>
+                    <div style="text-align: center; margin-top: 55px; font-size: 17px; color: #9a8a7a; font-style: italic;">
+                        {svg_thanks} Trân trọng cảm ơn quý phụ huynh!
                     </div>
                 </div>
-                <div style="text-align: center; margin-top: 55px; font-size: 17px; color: #9a8a7a; font-style: italic;">
-                    {svg_thanks} Trân trọng cảm ơn quý phụ huynh!
-                </div>
             </div>
-        </div>
-        """
-        all_receipts_html += receipt_html
+            """
+            all_receipts_html += receipt_html
 
-    st.success(f"🎉 Hoàn tất đọc dữ liệu của {len(df)} học sinh!")
-    
-    component_html = f"""
-    <!DOCTYPE html>
-    <html lang="vi">
-    <head>
-        <meta charset="UTF-8">
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-        <style>
-            body {{ font-family: Arial, sans-serif; text-align: center; margin: 0; padding: 20px; background: transparent; }}
-            .btn-export {{ background: linear-gradient(135deg, #bc6c65 0%, #d49a71 100%); color: white; border: none; padding: 25px 40px; font-size: 22px; border-radius: 15px; cursor: pointer; font-weight: bold; box-shadow: 0 8px 20px rgba(188, 108, 101, 0.4); transition: 0.3s; width: 100%; max-width: 600px; display: inline-flex; align-items: center; justify-content: center; gap: 15px; }}
-            .btn-export:hover {{ transform: scale(1.03); box-shadow: 0 10px 25px rgba(188, 108, 101, 0.6); }}
-            .btn-export:disabled {{ background: #ccc; cursor: not-allowed; transform: none; box-shadow: none; color: #666; }}
-            #status {{ margin-top: 20px; font-size: 18px; font-weight: bold; color: #bc6c65; }}
-            #hidden-receipts {{ position: absolute; left: -9999px; top: 0; opacity: 0; pointer-events: none; }}
-        </style>
-    </head>
-    <body>
-        <button id="exportBtn" class="btn-export" onclick="startExport()">
-            <svg viewBox="0 0 24 24" width="30" height="30" fill="white"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-            TẢI XUỐNG ZIP ẢNH PNG
-        </button>
-        <div id="status">Sẵn sàng xuất ảnh!</div>
+        st.success("🎉 Đồng bộ dữ liệu thành công!")
+        
+        component_html = f"""
+        <!DOCTYPE html>
+        <html lang="vi">
+        <head>
+            <meta charset="UTF-8">
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+            <style>
+                body {{ font-family: Arial, sans-serif; text-align: center; margin: 0; padding: 20px; background: transparent; }}
+                .btn-export {{ background: linear-gradient(135deg, #bc6c65 0%, #d49a71 100%); color: white; border: none; padding: 25px 40px; font-size: 22px; border-radius: 15px; cursor: pointer; font-weight: bold; box-shadow: 0 8px 20px rgba(188, 108, 101, 0.4); transition: 0.3s; width: 100%; max-width: 600px; display: inline-flex; align-items: center; justify-content: center; gap: 15px; }}
+                .btn-export:hover {{ transform: scale(1.03); box-shadow: 0 10px 25px rgba(188, 108, 101, 0.6); }}
+                .btn-export:disabled {{ background: #ccc; cursor: not-allowed; transform: none; box-shadow: none; color: #666; }}
+                #status {{ margin-top: 20px; font-size: 18px; font-weight: bold; color: #bc6c65; }}
+                #hidden-receipts {{ position: absolute; left: -9999px; top: 0; opacity: 0; pointer-events: none; }}
+            </style>
+        </head>
+        <body>
+            <button id="exportBtn" class="btn-export" onclick="startExport()">
+                <svg viewBox="0 0 24 24" width="30" height="30" fill="white"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                TẢI XUỐNG ZIP ẢNH PNG
+            </button>
+            <div id="status">Sẵn sàng xuất ảnh!</div>
 
-        <div id="hidden-receipts">
-            {all_receipts_html}
-        </div>
+            <div id="hidden-receipts">
+                {all_receipts_html}
+            </div>
 
-        <script>
-            async function startExport() {{
-                const btn = document.getElementById('exportBtn');
-                const status = document.getElementById('status');
-                btn.disabled = true;
-                btn.innerHTML = "⏳ Đang vẽ ảnh, đừng tắt trang nhé...";
-                status.innerText = "Đang khởi động...";
+            <script>
+                async function startExport() {{
+                    const btn = document.getElementById('exportBtn');
+                    const status = document.getElementById('status');
+                    btn.disabled = true;
+                    btn.innerHTML = "⏳ Đang xử lý ảnh, vui lòng giữ tab này...";
+                    status.innerText = "Đang khởi động...";
 
-                const zip = new JSZip();
-                const receipts = document.querySelectorAll('.receipt-card');
+                    const zip = new JSZip();
+                    const receipts = document.querySelectorAll('.receipt-card');
 
-                for(let i=0; i<receipts.length; i++) {{
-                    let name = receipts[i].getAttribute('data-name');
-                    status.innerText = "Đang xử lý ảnh: " + name + " (" + (i+1) + "/" + receipts.length + ")";
-                    
-                    const canvas = await html2canvas(receipts[i], {{
-                        scale: 2, 
-                        useCORS: true,
-                        backgroundColor: "#ffffff",
-                        logging: false
+                    for(let i=0; i<receipts.length; i++) {{
+                        let name = receipts[i].getAttribute('data-name');
+                        status.innerText = "Đang vẽ ảnh: " + name.replace('_', ' ') + " (" + (i+1) + "/" + receipts.length + ")";
+                        
+                        const canvas = await html2canvas(receipts[i], {{
+                            scale: 2, 
+                            useCORS: true,
+                            backgroundColor: "#ffffff",
+                            logging: false
+                        }});
+
+                        const imgData = canvas.toDataURL("image/png").split(',')[1];
+                        zip.file("Phieu_Hoc_Phi_" + name + ".png", imgData, {{base64: true}});
+                    }}
+
+                    status.innerText = "📦 Đang đóng gói file ZIP...";
+                    zip.generateAsync({{type:"blob"}}).then(function(content) {{
+                        saveAs(content, "Phieu_Hoc_Phi_PNG.zip");
+                        status.innerText = "✅ XUẤT ẢNH THÀNH CÔNG!";
+                        btn.innerHTML = "🚀 XUẤT LẠI ẢNH NẾU CẦN";
+                        btn.disabled = false;
                     }});
-
-                    const imgData = canvas.toDataURL("image/png").split(',')[1];
-                    zip.file("Phieu_Hoc_Phi_" + name + ".png", imgData, {{base64: true}});
                 }}
-
-                status.innerText = "📦 Đang nén thành file ZIP...";
-                zip.generateAsync({{type:"blob"}}).then(function(content) {{
-                    saveAs(content, "Phieu_Hoc_Phi_PNG.zip");
-                    status.innerText = "✅ XONG! BẠN KIỂM TRA THƯ MỤC DOWNLOAD NHÉ.";
-                    btn.innerHTML = "🚀 XUẤT LẠI ẢNH NẾU CẦN";
-                    btn.disabled = false;
-                }});
-            }}
-        </script>
-    </body>
-    </html>
-    """
-    
-    components.html(component_html, height=250, scrolling=False)
+            </script>
+        </body>
+        </html>
+        """
+        components.html(component_html, height=250, scrolling=False)
