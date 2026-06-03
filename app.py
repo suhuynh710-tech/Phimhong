@@ -13,7 +13,7 @@ st.set_page_config(page_title="Phím Hồng Music - PNG Generator", layout="wide
 LOGO_PATH = "PHÍM HỒNG MUSIC (Nền trắng).jpg"
 
 st.title("🎨 Cỗ Máy Xuất Ảnh PNG - Bản Phân Loại Học Phí")
-st.write("Đã sửa lỗi cú pháp. Tự động nhận diện Học phí (buổi) hoặc Học phí (tháng) dựa theo file Excel hàng dọc mới.")
+st.write("Đã sửa hoàn toàn lỗi NameError. Tự động phân loại Học phí (buổi) hoặc Học phí (tháng) chính xác.")
 
 uploaded_file = st.file_uploader("📂 Tải file Excel Danh_Sach_Hoc_Phi_Moi.xlsx", type=["xlsx"])
 
@@ -69,7 +69,7 @@ if uploaded_file:
         st.error("❌ Không tìm thấy cột 'Họ và Tên' trong trang danh sách!")
     else:
         df_students = df_students.dropna(subset=[name_col])
-        st.success(f"🎉 Kết nối thành công Sheet dữ liệu hàng dọc!")
+        st.success(f"🎉 Kết nối thành công dữ liệu!")
         progress_bar = st.progress(0)
         
         all_receipts_html = ""
@@ -83,6 +83,17 @@ if uploaded_file:
         nhan_xet_col = next((col for col in df_students.columns if 'nhận xét của gv' in col.lower()), None)
         ngan_hang_col = next((col for col in df_students.columns if 'ngân hàng' in col.lower()), None)
         stk_col = next((col for col in df_students.columns if 'stk' in col.lower()), None)
+
+        # --- SỬA LỖI QUÉT NGÀY THÁNG TẠI ĐÂY ---
+        date_cols = []
+        for col in df_attendance.columns:
+            col_str = str(col).upper()
+            if isinstance(col, datetime.datetime):
+                col_str = col.strftime('%d/%m')
+                df_attendance.rename(columns={col: col_str}, inplace=True)
+                date_cols.append(col_str)
+            elif '/' in col_str or col_str.startswith('T2') or col_str.startswith('T3') or col_str.startswith('T4') or col_str.startswith('T5') or col_str.startswith('T6') or col_str.startswith('T7') or col_str.startswith('CN'):
+                date_cols.append(col)
 
         for index, row in df_students.iterrows():
             ten = str(row[name_col]).strip()
@@ -109,7 +120,6 @@ if uploaded_file:
                     thu = str(att_row[thu_col]).strip() if thu_col and pd.notna(att_row[thu_col]) else ""
                     ngay_val = att_row[ngay_col]
                     
-                    # Định dạng hiển thị ngày tháng (Cắt bỏ năm và giờ nếu có)
                     if isinstance(ngay_val, (datetime.datetime, datetime.date)):
                         day_month = ngay_val.strftime('%d/%m')
                     else:
@@ -197,7 +207,7 @@ if uploaded_file:
             bank = str(row[ngan_hang_col]).strip() if ngan_hang_col else ""
             stk = str(row[stk_col]).split('.')[0] if (stk_col and pd.notna(row[stk_col])) else ""
 
-            # Tạo ảnh QR (Chỉ chứa Tên Học Sinh)
+            # Tạo ảnh QR
             qr_html = ""
             if bank and stk and bank != 'nan':
                 add_info = urllib.parse.quote(ten)
@@ -262,6 +272,7 @@ if uploaded_file:
                         </div>
                         <div style="flex: 0.7; display: flex; flex-direction: column; gap: 20px;">
                             <div style="background: #fdf6ec; border: 2px solid #ecdac8; border-radius: 15px; padding: 20px; text-align: center;">
+                                <div style="font-size: 13px; color: #8e7f72; font-weight: bold;">TỔNG THANH TOÁN</div>
                                 <div style="font-size: 38px; color: #4a2e25; font-weight: 900; margin-top: 10px; font-family: 'Times New Roman', serif;">{tong_thanh_toan:,} đ</div>
                             </div>
                             <div style="background: white; border: 2px dashed #d49a71; border-radius: 15px; padding: 20px; text-align: center;">
