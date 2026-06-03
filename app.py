@@ -13,7 +13,7 @@ st.set_page_config(page_title="Phím Hồng Music - PNG Generator", layout="wide
 LOGO_PATH = "PHÍM HỒNG MUSIC (Nền trắng).jpg"
 
 st.title("🎨 Cỗ Máy Xuất Ảnh PNG - Phím Hồng Music")
-st.write("Bản Fix Kế Toán: Tự động trừ tiền nếu ghi chú có chữ 'nghỉ'/'trừ' và minh bạch phép tính trên phiếu.")
+st.write("Bản Fix Cuối Cùng: Nhận diện chuẩn xác 100% các cột Phí Khác, Ghi Chú bất chấp chữ hoa/chữ thường.")
 
 uploaded_file = st.file_uploader("📂 Tải file Excel Danh_Sach_Hoc_Phi.xlsx", type=["xlsx"])
 
@@ -35,10 +35,17 @@ if uploaded_file:
     df = pd.read_excel(uploaded_file, header=0).dropna(subset=['Họ và Tên'])
     logo_b64 = get_base64_logo()
     
-    st.info(f"⏳ Đã nhận {len(df)} học sinh. Đang vẽ ảnh, chờ 3 giây...")
+    st.info(f"⏳ Đã nhận {len(df)} học sinh. Đang vẽ ảnh, chờ xíu...")
     progress_bar = st.progress(0)
     
     all_receipts_html = ""
+    
+    # --- CÔNG CỤ TÌM TÊN CỘT THÔNG MINH (Chống lỗi Hoa/Thường) ---
+    phi_khac_col = next((col for col in df.columns if str(col).strip().lower() == 'phí khác'), None)
+    ghi_chu_col = next((col for col in df.columns if str(col).strip().lower() == 'ghi chú'), None)
+    nhan_xet_col = next((col for col in df.columns if str(col).strip().lower() == 'nhận xét của gv'), None)
+    ngan_hang_col = next((col for col in df.columns if str(col).strip().lower() == 'ngân hàng'), None)
+    stk_col = next((col for col in df.columns if str(col).strip().lower() == 'stk'), None)
     
     # Bắt cột Ngày đi học
     date_cols = []
@@ -61,42 +68,35 @@ if uploaded_file:
         so_buoi = int(row['Tổng buổi học']) if pd.notna(row['Tổng buổi học']) else 0
         tong_tien_goc = int(row['Tổng học phí']) if pd.notna(row['Tổng học phí']) else (hoc_phi * so_buoi)
         
-        # --- BỘ PHÂN TÍCH PHÍ KHÁC VÀ GHI CHÚ THÔNG MINH ---
+        # --- XỬ LÝ PHÍ KHÁC VÀ GHI CHÚ (ĐÃ FIX LỖI) ---
         phi_khac = 0
         phi_khac_html = ""
         tong_tien_goc_html = ""
         
-        if 'Phí khác' in df.columns:
-            val = row['Phí khác']
+        if phi_khac_col:
+            val = row[phi_khac_col]
             if pd.notna(val) and str(val).strip() != '':
                 try:
-                    # Tiền xử lý để loại bỏ dấu chấm, phẩy làm lỗi tính toán
                     if isinstance(val, (int, float)):
                         phi_khac = int(val)
                     else:
-                        s = str(val).strip().replace(' ', '')
-                        if ',' in s and '.' in s: s = s.split('.')[0].replace(',', '')
-                        elif ',' in s: s = s.replace(',', '')
-                        elif '.' in s:
-                            parts = s.split('.')
-                            s = s.replace('.', '') if len(parts[-1]) == 3 else parts[0]
+                        s = str(val).strip().replace(' ', '').replace(',', '')
+                        if '.' in s: s = s.split('.')[0]
                         phi_khac = int(s)
                     
                     if phi_khac != 0:
                         ghi_chu_text = ""
-                        raw_gc = str(row['Ghi chú']).strip() if 'Ghi chú' in df.columns and pd.notna(row['Ghi chú']) else ""
+                        raw_gc = str(row[ghi_chu_col]).strip() if ghi_chu_col and pd.notna(row[ghi_chu_col]) else ""
                         
-                        if raw_gc:
+                        if raw_gc and raw_gc.lower() != 'nan':
                             ghi_chu_text = f" <span style='font-size: 16px; font-style: italic; color: #a49688;'>({raw_gc})</span>"
-                            # Nếu phụ huynh ghi chú có chữ trừ/nghỉ nhưng lại nhập số dương, tự động sửa thành số âm
+                            # Sửa thành số âm nếu người dùng lỡ nhập số dương nhưng ghi chú là "trừ"
                             if phi_khac > 0 and any(kw in raw_gc.lower() for kw in ['trừ', 'nghỉ', 'giảm']):
                                 phi_khac = -phi_khac
 
-                        # Xử lý màu sắc (+) màu chuẩn, (-) màu đỏ tươi
                         d_color = "#bc6c65" if phi_khac > 0 else "#ff0000"
                         d_sign = "+" if phi_khac > 0 else "-"
                         
-                        # Hiện dòng Thành Tiền Học Phí nếu có phí khác để minh bạch phép tính
                         tong_tien_goc_html = f'''
                         <tr style="border-top: 1px dashed #e2d5c4; background: rgba(247,241,233,0.5);">
                             <td style="padding: 12px 0; color: #7a6b5d; display:flex; align-items:center;">{svg_money} Thành tiền (Tiền học):</td>
@@ -113,15 +113,15 @@ if uploaded_file:
                 except Exception as e:
                     pass
         
-        # PHÉP TÍNH CHÍNH XÁC
+        # --- TỔNG THANH TOÁN = TIỀN HỌC + PHÍ KHÁC ---
         tong_thanh_toan = tong_tien_goc + phi_khac
         if tong_thanh_toan < 0: tong_thanh_toan = 0
 
-        raw_nhan_xet = row['Nhận Xét Của GV'] if 'Nhận Xét Của GV' in df.columns else ""
+        raw_nhan_xet = row[nhan_xet_col] if nhan_xet_col else ""
         nhan_xet = str(raw_nhan_xet).strip() if (pd.notna(raw_nhan_xet) and str(raw_nhan_xet).lower() != 'nan') else ""
 
-        bank = str(row['Ngân Hàng']).strip() if 'Ngân Hàng' in df.columns else ""
-        stk = str(row['STK']).split('.')[0] if ('STK' in df.columns and pd.notna(row['STK'])) else ""
+        bank = str(row[ngan_hang_col]).strip() if ngan_hang_col else ""
+        stk = str(row[stk_col]).split('.')[0] if (stk_col and pd.notna(row[stk_col])) else ""
 
         # Ngày đi học
         days_html = '<div style="display: flex; flex-wrap: wrap; gap: 8px;">'
@@ -144,7 +144,7 @@ if uploaded_file:
         if not has_day:
             days_html = '<div style="color:#aaa; font-style:italic; font-size:14px; padding: 5px 0;">Chưa có dữ liệu điểm danh</div>'
 
-        # QR Code (Chỉ để Tên Học Sinh)
+        # QR Code (Chỉ lấy Tên Học Sinh)
         qr_html = ""
         if bank and stk and bank != 'nan':
             add_info = urllib.parse.quote(ten)
@@ -162,7 +162,7 @@ if uploaded_file:
         if not qr_html:
             qr_html = '<div style="font-size:12px; color:#999; padding:40px 0; border:1px dashed #ccc; border-radius:8px; text-align:center;">CHƯA CÓ QR</div>'
 
-        # --- GIAO DIỆN PHIẾU (RENDER NGẦM) ---
+        # HTML CỦA MỘT PHIẾU
         receipt_html = f"""
         <div class="receipt-card" data-name="{safe_name}" style="width: 850px; background: white; font-family: Arial, sans-serif; margin: 0 auto 40px auto; border-radius: 20px; overflow: hidden; box-sizing: border-box; position: relative;">
             <div style="background: linear-gradient(135deg, #bc6c65 0%, #d49a71 100%); padding: 35px 50px; display: flex; align-items: center; justify-content: space-between; color: white;">
