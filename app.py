@@ -13,7 +13,7 @@ st.set_page_config(page_title="Phím Hồng Music - PNG Generator", layout="wide
 LOGO_PATH = "PHÍM HỒNG MUSIC (Nền trắng).jpg"
 
 st.title("🎨 Cỗ Máy Xuất Ảnh PNG - Bản Phân Loại Học Phí")
-st.write("Đã sửa hoàn toàn lỗi NameError. Tự động phân loại Học phí (buổi) hoặc Học phí (tháng) chính xác.")
+st.write("Đã vá lỗi thanh tiến trình vượt quá 100% do file Excel có dòng trống.")
 
 uploaded_file = st.file_uploader("📂 Tải file Excel Danh_Sach_Hoc_Phi_Moi.xlsx", type=["xlsx"])
 
@@ -23,7 +23,6 @@ def get_base64_logo():
             return f"data:image/jpeg;base64,{base64.b64encode(f.read()).decode()}"
     return ""
 
-# Hàm chuyển đổi số thông minh chống lỗi dữ liệu trống (NaN) từ Excel
 def clean_number(val):
     if pd.isna(val):
         return 0
@@ -74,7 +73,6 @@ if uploaded_file:
         
         all_receipts_html = ""
         
-        # Cấu hình tìm cột thông minh
         lop_col = next((col for col in df_students.columns if col.lower() == 'lớp'), None)
         hp_buoi_col = next((col for col in df_students.columns if 'học phí (buổi)' in col.lower()), None)
         hp_thang_col = next((col for col in df_students.columns if 'học phí (tháng)' in col.lower()), None)
@@ -84,7 +82,6 @@ if uploaded_file:
         ngan_hang_col = next((col for col in df_students.columns if 'ngân hàng' in col.lower()), None)
         stk_col = next((col for col in df_students.columns if 'stk' in col.lower()), None)
 
-        # --- SỬA LỖI QUÉT NGÀY THÁNG TẠI ĐÂY ---
         date_cols = []
         for col in df_attendance.columns:
             col_str = str(col).upper()
@@ -95,14 +92,17 @@ if uploaded_file:
             elif '/' in col_str or col_str.startswith('T2') or col_str.startswith('T3') or col_str.startswith('T4') or col_str.startswith('T5') or col_str.startswith('T6') or col_str.startswith('T7') or col_str.startswith('CN'):
                 date_cols.append(col)
 
-        for index, row in df_students.iterrows():
+        # Sử dụng enumerate thay vì index để thanh tiến trình chạy chuẩn xác không vượt 100%
+        for i, (index, row) in enumerate(df_students.iterrows()):
             ten = str(row[name_col]).strip()
             safe_name = ten.replace(' ', '_').replace('(', '').replace(')', '')
-            progress_bar.progress((index + 1) / len(df_students))
+            
+            # Tính toán tiến trình theo số đếm thực tế
+            progress_val = min((i + 1) / len(df_students), 1.0)
+            progress_bar.progress(progress_val)
             
             lop = str(row[lop_col]).strip() if lop_col and pd.notna(row[lop_col]) else "Piano"
             
-            # --- TRÍCH XUẤT NGÀY ĐI HỌC VÀ ĐẾM SỐ BUỔI HÀNG DỌC ---
             so_buoi = 0
             days_html = '<div style="display: flex; flex-wrap: wrap; gap: 8px;">'
             has_day = False
@@ -147,7 +147,6 @@ if uploaded_file:
             if not has_day:
                 days_html = '<div style="color:#aaa; font-style:italic; font-size:14px; padding: 5px 0;">Chưa có dữ liệu điểm danh</div>'
             
-            # --- PHÂN LOẠI HỌC PHÍ THÁNG / BUỔI CHỐNG LỖI ---
             hoc_phi_buoi = clean_number(row[hp_buoi_col]) if hp_buoi_col else 0
             hoc_phi_thang = clean_number(row[hp_thang_col]) if hp_thang_col else 0
             
@@ -160,7 +159,6 @@ if uploaded_file:
                 hoc_phi_display = hoc_phi_buoi
                 tong_tien_goc = hoc_phi_buoi * so_buoi
             
-            # Xử lý phần phí khác và ghi chú toán học
             phi_khac = 0
             phi_khac_html = ""
             tong_tien_goc_html = ""
@@ -197,7 +195,6 @@ if uploaded_file:
                             '''
                     except: pass
             
-            # TỔNG THANH TOÁN CUỐI CÙNG
             tong_thanh_toan = tong_tien_goc + phi_khac
             if tong_thanh_toan < 0: tong_thanh_toan = 0
 
@@ -207,7 +204,6 @@ if uploaded_file:
             bank = str(row[ngan_hang_col]).strip() if ngan_hang_col else ""
             stk = str(row[stk_col]).split('.')[0] if (stk_col and pd.notna(row[stk_col])) else ""
 
-            # Tạo ảnh QR
             qr_html = ""
             if bank and stk and bank != 'nan':
                 add_info = urllib.parse.quote(ten)
