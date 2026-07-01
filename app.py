@@ -4,16 +4,20 @@ import pandas as pd
 import requests
 import base64
 import urllib.parse
-import io
 import os
 import datetime
 
 st.set_page_config(page_title="Phím Hồng Music - PNG Generator", layout="wide")
 
-LOGO_PATH = "PHÍM HỒNG MUSIC (Nền trắng).jpg"
+LOGO_PATH = "PHÍM HỒNG MUSIC (Nền trắng).jpg"
 
 st.title("🎨 Cỗ Máy Xuất Ảnh PNG - Bản Phân Loại Học Phí")
-st.write("Đã vá lỗi thanh tiến trình vượt quá 100% do file Excel có dòng trống.")
+st.write("Đã vá lỗi thanh tiến trình và tối ưu hóa khả năng hiển thị ẩn của bộ dựng ảnh.")
+
+# --- THÊM BỘ CHỌN THỜI GIAN LINH HOẠT ---
+now = datetime.datetime.now()
+thang_nam_mac_dinh = f"Tháng {now.month} / {now.year}"
+thang_nam_hien_thi = st.sidebar.text_input("📅 Thời gian hiển thị trên phiếu:", value=thang_nam_mac_dinh)
 
 uploaded_file = st.file_uploader("📂 Tải file Excel Danh_Sach_Hoc_Phi_Moi.xlsx", type=["xlsx"])
 
@@ -38,6 +42,14 @@ def clean_number(val):
             return int(float(s))
         except:
             return 0
+
+def clean_stk(val):
+    if pd.isna(val):
+        return ""
+    s = str(val).strip()
+    if s.endswith('.0'):
+        s = s[:-2]
+    return s
 
 # --- ICON SVG SIÊU NÉT ---
 svg_student = '<svg viewBox="0 0 24 24" width="24" height="24" fill="#6d5b4b" style="margin-right:12px;"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2.06-1.12V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>'
@@ -92,12 +104,10 @@ if uploaded_file:
             elif '/' in col_str or col_str.startswith('T2') or col_str.startswith('T3') or col_str.startswith('T4') or col_str.startswith('T5') or col_str.startswith('T6') or col_str.startswith('T7') or col_str.startswith('CN'):
                 date_cols.append(col)
 
-        # Sử dụng enumerate thay vì index để thanh tiến trình chạy chuẩn xác không vượt 100%
         for i, (index, row) in enumerate(df_students.iterrows()):
             ten = str(row[name_col]).strip()
             safe_name = ten.replace(' ', '_').replace('(', '').replace(')', '')
             
-            # Tính toán tiến trình theo số đếm thực tế
             progress_val = min((i + 1) / len(df_students), 1.0)
             progress_bar.progress(progress_val)
             
@@ -202,7 +212,7 @@ if uploaded_file:
             nhan_xet = str(raw_nhan_xet).strip() if (pd.notna(raw_nhan_xet) and str(raw_nhan_xet).lower() != 'nan') else ""
 
             bank = str(row[ngan_hang_col]).strip() if ngan_hang_col else ""
-            stk = str(row[stk_col]).split('.')[0] if (stk_col and pd.notna(row[stk_col])) else ""
+            stk = clean_stk(row[stk_col]) if stk_col else ""
 
             qr_html = ""
             if bank and stk and bank != 'nan':
@@ -221,6 +231,7 @@ if uploaded_file:
             if not qr_html:
                 qr_html = '<div style="font-size:12px; color:#999; padding:40px 0; border:1px dashed #ccc; border-radius:8px; text-align:center;">CHƯA CÓ QR</div>'
 
+            # --- SỬ DỤNG BIẾN thang_nam_hien_thi TẠI TIÊU ĐỀ PHIẾU ---
             receipt_html = f"""
             <div class="receipt-card" data-name="{safe_name}" style="width: 850px; background: white; font-family: Arial, sans-serif; margin: 0 auto 40px auto; border-radius: 20px; overflow: hidden; box-sizing: border-box; position: relative;">
                 <div style="background: linear-gradient(135deg, #bc6c65 0%, #d49a71 100%); padding: 35px 50px; display: flex; align-items: center; justify-content: space-between; color: white;">
@@ -230,7 +241,7 @@ if uploaded_file:
                         <h1 style="margin: 0; font-size: 44px; font-weight: 900; letter-spacing: 2px; font-family: 'Times New Roman', Times, serif; text-transform: uppercase; text-shadow: 1px 1px 4px rgba(0,0,0,0.2);">Phiếu Học Phí</h1>
                     </div>
                     <div style="text-align: center; min-width: 180px;">
-                        <div style="font-size: 20px; font-weight: bold; margin-bottom: 8px;">Tháng 5 / 2026</div>
+                        <div style="font-size: 20px; font-weight: bold; margin-bottom: 8px;">{thang_nam_hien_thi}</div>
                         <div style="font-size: 28px; font-weight: 900; background: rgba(255,255,255,0.25); padding: 10px 25px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.5); font-family: 'Times New Roman', Times, serif; text-transform: capitalize;">Lớp {lop}</div>
                     </div>
                 </div>
@@ -287,6 +298,7 @@ if uploaded_file:
             """
             all_receipts_html += receipt_html
 
+        # --- BỎ THUỘC TÍNH OPACITY: 0 Ở #hidden-receipts ĐỂ TRÁNH LỖI PHÔI TRẮNG ---
         component_html = f"""
         <!DOCTYPE html>
         <html lang="vi">
@@ -301,7 +313,7 @@ if uploaded_file:
                 .btn-export:hover {{ transform: scale(1.03); box-shadow: 0 10px 25px rgba(188, 108, 101, 0.6); }}
                 .btn-export:disabled {{ background: #ccc; cursor: not-allowed; transform: none; box-shadow: none; color: #666; }}
                 #status {{ margin-top: 20px; font-size: 18px; font-weight: bold; color: #bc6c65; }}
-                #hidden-receipts {{ position: absolute; left: -9999px; top: 0; opacity: 0; pointer-events: none; }}
+                #hidden-receipts {{ position: absolute; left: -9999px; top: 0; pointer-events: none; }}
             </style>
         </head>
         <body>
@@ -328,7 +340,7 @@ if uploaded_file:
 
                     for(let i=0; i<receipts.length; i++) {{
                         let name = receipts[i].getAttribute('data-name');
-                        status.innerText = "Đang vẽ ảnh: " + name.replace('_', ' ') + " (" + (i+1) + "/" + receipts.length + ")";
+                        status.innerText = "Đang vẽ ảnh: " + name.replace(/_/g, ' ') + " (" + (i+1) + "/" + receipts.length + ")";
                         
                         const canvas = await html2canvas(receipts[i], {{
                             scale: 2, 
