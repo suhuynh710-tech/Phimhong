@@ -14,6 +14,12 @@ LOGO_PATH = "PHÍM HỒNG MUSIC (Nền trắng).jpg"
 st.title("🎨 Cỗ Máy Xuất Ảnh PNG - Bản Phân Loại Học Phí")
 st.write("Đã vá lỗi thanh tiến trình và tối ưu hóa khả năng hiển thị ẩn của bộ dựng ảnh.")
 
+# --- KIỂM TRA FILE LOGO TRÊN SERVER (GITHUB) ---
+if not os.path.exists(LOGO_PATH):
+    st.sidebar.error(f"❌ Không tìm thấy file: `{LOGO_PATH}`. Hãy kiểm tra lại tên file trên GitHub (chữ hoa/thường hoặc dấu tiếng Việt)!")
+else:
+    st.sidebar.success("✅ Đã kết nối file Logo thành công!")
+
 # --- THÊM BỘ CHỌN THỜI GIAN LINH HOẠT ---
 now = datetime.datetime.now()
 thang_nam_mac_dinh = f"Tháng {now.month} / {now.year}"
@@ -231,11 +237,13 @@ if uploaded_file:
             if not qr_html:
                 qr_html = '<div style="font-size:12px; color:#999; padding:40px 0; border:1px dashed #ccc; border-radius:8px; text-align:center;">CHƯA CÓ QR</div>'
 
-            # --- SỬ DỤNG BIẾN thang_nam_hien_thi TẠI TIÊU ĐỀ PHIẾU ---
+            # --- THAY ĐỔI KHUNG LOGO SANG THẺ <img> ĐỂ ĐẢM BẢO HTML2CANVAS KHÔNG BỊ PHÔI TRẮNG ---
             receipt_html = f"""
             <div class="receipt-card" data-name="{safe_name}" style="width: 850px; background: white; font-family: Arial, sans-serif; margin: 0 auto 40px auto; border-radius: 20px; overflow: hidden; box-sizing: border-box; position: relative;">
                 <div style="background: linear-gradient(135deg, #bc6c65 0%, #d49a71 100%); padding: 35px 50px; display: flex; align-items: center; justify-content: space-between; color: white;">
-                    <div style="width: 90px; height: 90px; border-radius: 50%; border: 3px solid white; background-color: #fff; background-image: url('{logo_b64}'); background-size: cover; background-position: center; flex-shrink: 0;"></div>
+                    <div style="width: 90px; height: 90px; border-radius: 50%; border: 3px solid white; background-color: #fff; overflow: hidden; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <img src="{logo_b64}" style="width: 100%; height: 100%; object-fit: cover;" alt="Logo">
+                    </div>
                     <div style="text-align: center; flex-grow: 1; padding: 0 20px;">
                         <div style="font-size: 16px; letter-spacing: 3px; font-weight: bold; opacity: 0.9; margin-bottom: 5px; text-transform: uppercase;">Lớp Nhạc Phím Hồng</div>
                         <h1 style="margin: 0; font-size: 44px; font-weight: 900; letter-spacing: 2px; font-family: 'Times New Roman', Times, serif; text-transform: uppercase; text-shadow: 1px 1px 4px rgba(0,0,0,0.2);">Phiếu Học Phí</h1>
@@ -298,7 +306,6 @@ if uploaded_file:
             """
             all_receipts_html += receipt_html
 
-        # --- BỎ THUỘC TÍNH OPACITY: 0 Ở #hidden-receipts ĐỂ TRÁNH LỖI PHÔI TRẮNG ---
         component_html = f"""
         <!DOCTYPE html>
         <html lang="vi">
