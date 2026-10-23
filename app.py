@@ -11,7 +11,7 @@ st.set_page_config(page_title="Phím Hồng Music - PNG Generator", layout="wide
 LOGO_PATH = "PHÍM HỒNG MUSIC (Nền trắng).jpg"
 
 st.title("🎨 Cỗ Máy Xuất Ảnh PNG - Bản Phân Loại Học Phí")
-st.write("Đã sửa lỗi hiển thị mã QR thanh toán chuẩn VietQR.")
+st.write("Đã sửa triệt để lỗi cú pháp f-string và chuẩn hóa mã QR thanh toán.")
 
 # --- KIỂM TRA FILE LOGO TRÊN SERVER (GITHUB) ---
 if not os.path.exists(LOGO_PATH):
@@ -81,6 +81,74 @@ def get_bank_code(bank_name):
     elif 'vpbank' in b:
         return "VPB"
     return str(bank_name).strip().upper()
+
+def get_receipt_html(safe_name, logo_b64, thang_nam_hien_thi, lop, ten, label_hoc_phi, hoc_phi_display, so_buoi, days_html, nhan_xet, tong_tien_goc_html, phi_khac_html, tong_thanh_toan, qr_html, bank_raw, stk, svg_student, svg_receipt, svg_calendar, svg_thanks):
+    return f"""
+    <div class="receipt-card" data-name="{safe_name}" style="width: 850px; background: white; font-family: Arial, sans-serif; margin: 0 auto 40px auto; border-radius: 20px; overflow: hidden; box-sizing: border-box; position: relative;">
+        <div style="background: linear-gradient(135deg, #bc6c65 0%, #d49a71 100%); padding: 35px 50px; display: flex; align-items: center; justify-content: space-between; color: white;">
+            <div style="width: 90px; height: 90px; border-radius: 50%; border: 3px solid white; background-color: #fff; overflow: hidden; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <img src="{logo_b64}" style="width: 100%; height: 100%; object-fit: cover;" alt="Logo">
+            </div>
+            <div style="text-align: center; flex-grow: 1; padding: 0 20px;">
+                <div style="font-size: 16px; letter-spacing: 3px; font-weight: bold; opacity: 0.9; margin-bottom: 5px; text-transform: uppercase;">Lớp Nhạc Phím Hồng</div>
+                <h1 style="margin: 0; font-size: 44px; font-weight: 900; letter-spacing: 2px; font-family: 'Times New Roman', Times, serif; text-transform: uppercase; text-shadow: 1px 1px 4px rgba(0,0,0,0.2);">Phiếu Học Phí</h1>
+            </div>
+            <div style="text-align: center; min-width: 180px;">
+                <div style="font-size: 20px; font-weight: bold; margin-bottom: 8px;">{thang_nam_hien_thi}</div>
+                <div style="font-size: 28px; font-weight: 900; background: rgba(255,255,255,0.25); padding: 10px 25px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.5); font-family: 'Times New Roman', Times, serif; text-transform: capitalize;">Lớp {lop}</div>
+            </div>
+        </div>
+        <div style="padding: 40px 60px;">
+            <div style="background: #fdfaf6; border: 1px solid #f2e2b3; border-radius: 15px; padding: 30px 45px; margin: 0 auto 35px auto; width: 85%;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 20px;">
+                    <tr>
+                        <td style="padding: 15px 0; color: #7a6b5d; display:flex; align-items:center;">{svg_student} Học sinh:</td>
+                        <td style="padding: 15px 0; font-weight: 900; color: #2c1a16; text-align: right; font-size: 30px; font-family: 'Times New Roman', Times, serif;">{ten}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 15px 0; color: #7a6b5d; display:flex; align-items:center; border-top: 1px dashed #e2d5c4;">{svg_receipt} {label_hoc_phi}:</td>
+                        <td style="padding: 15px 0; font-weight: bold; color: #2c1a16; text-align: right; border-top: 1px dashed #e2d5c4;">{hoc_phi_display:,} đ</td>
+                    </tr>
+                    <tr style="border-top: 1px dashed #e2d5c4;">
+                        <td style="padding: 15px 0; color: #7a6b5d; display:flex; align-items:center;">{svg_calendar} Số buổi học:</td>
+                        <td style="padding: 15px 0; font-weight: bold; color: #2c1a16; text-align: right;">{so_buoi} buổi</td>
+                    </tr>
+                    {tong_tien_goc_html}
+                    {phi_khac_html}
+                </table>
+            </div>
+            <div style="display: flex; gap: 45px; align-items: flex-start; justify-content: center; width: 95%; margin: 0 auto;">
+                <div style="flex: 1.3;">
+                    <div style="margin-bottom: 25px;">
+                        <div style="font-size: 14px; color: #8e7f72; font-weight: bold; letter-spacing: 1px; margin-bottom: 12px;">NGÀY ĐI HỌC</div>
+                        <div style="width: 100%;">{days_html}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 14px; color: #8e7f72; font-weight: bold; letter-spacing: 1px; margin-bottom: 12px;">NHẬN XÉT CỦA GIÁO VIÊN</div>
+                        <div style="background: #fffdf5; border: 1px solid #f2e2b3; border-radius: 12px; padding: 20px; color: #5a4b41; font-style: italic; line-height: 1.6; font-size: 16px; min-height: 20px;">
+                            {nhan_xet}
+                        </div>
+                    </div>
+                </div>
+                <div style="flex: 0.7; display: flex; flex-direction: column; gap: 20px;">
+                    <div style="background: #fdf6ec; border: 2px solid #ecdac8; border-radius: 15px; padding: 20px; text-align: center;">
+                        <div style="font-size: 13px; color: #8e7f72; font-weight: bold;">TỔNG THANH TOÁN</div>
+                        <div style="font-size: 38px; color: #4a2e25; font-weight: 900; margin-top: 10px; font-family: 'Times New Roman', serif;">{tong_thanh_toan:,} đ</div>
+                    </div>
+                    <div style="background: white; border: 2px dashed #d49a71; border-radius: 15px; padding: 20px; text-align: center;">
+                        <div style="font-size: 11px; color: #d49a71; font-weight: bold; margin-bottom: 15px;">QUÉT MÃ THANH TOÁN</div>
+                        <div style="display: flex; justify-content: center;">{qr_html}</div>
+                        <div style="margin-top: 15px; font-size: 18px; font-weight: 900; color: #bc6c65; text-transform: uppercase;">{bank_raw if bank_raw != 'nan' else ''}</div>
+                        <div style="font-size: 16px; font-weight: bold; color: #4a2e25; margin-top: 5px;">{stk if stk != 'nan' else ''}</div>
+                    </div>
+                </div>
+            </div>
+            <div style="text-align: center; margin-top: 55px; font-size: 17px; color: #9a8a7a; font-style: italic;">
+                {svg_thanks} Trân trọng cảm ơn quý phụ huynh!
+            </div>
+        </div>
+    </div>
+    """
 
 def get_component_html(receipts_html):
     return f"""
@@ -226,155 +294,4 @@ if uploaded_file:
                 
                 for _, att_row in present_rows.iterrows():
                     has_day = True
-                    thu = str(att_row[thu_col]).strip() if thu_col and pd.notna(att_row[thu_col]) else ":"
-                    ngay_val = att_row[ngay_col]
-                    
-                    if isinstance(ngay_val, (datetime.datetime, datetime.date)):
-                        day_month = ngay_val.strftime('%d/%m')
-                    else:
-                        s_date = str(ngay_val).strip().split(' ')[0]
-                        if '-' in s_date:
-                            try:
-                                p = s_date.split('-')
-                                day_month = f"{int(p[2]):02d}/{int(p[1]):02d}"
-                            except: day_month = s_date
-                        elif '/' in s_date:
-                            try:
-                                p = s_date.split('/')
-                                day_month = f"{int(p[0]):02d}/{int(p[1]):02d}"
-                            except: day_month = s_date
-                        else:
-                            day_month = s_date
-                    
-                    days_html += f'''
-                    <div style="background:#f7f1e9; border:1px solid #e0d1c1; border-radius:8px; padding:6px 12px; display:inline-block; text-align:center;">
-                        <div style="font-size:10px; color:#8e7f72; margin-bottom:2px; line-height:1;">{thu}</div>
-                        <div style="font-size:13px; font-weight:bold; color:#4a2e25; line-height:1;">{day_month}</div>
-                    </div>
-                    '''
-            days_html += '</div>'
-            if not has_day:
-                days_html = '<div style="color:#aaa; font-style:italic; font-size:14px; padding: 5px 0;">Chưa có dữ liệu điểm danh</div>'
-            
-            hoc_phi_buoi = clean_number(row[hp_buoi_col]) if hp_buoi_col else 0
-            hoc_phi_thang = clean_number(row[hp_thang_col]) if hp_thang_col else 0
-            
-            if hoc_phi_thang > 0:
-                label_hoc_phi = "Học phí"
-                hoc_phi_display = hoc_phi_thang
-                tong_tien_goc = hoc_phi_thang
-            else:
-                label_hoc_phi = "Học phí (buổi)"
-                hoc_phi_display = hoc_phi_buoi
-                tong_tien_goc = hoc_phi_buoi * so_buoi
-            
-            phi_khac = 0
-            phi_khac_html = ""
-            tong_tien_goc_html = ""
-            
-            if phi_khac_col:
-                val = row[phi_khac_col]
-                if pd.notna(val) and str(val).strip() != '':
-                    try:
-                        phi_khac = clean_number(val)
-                        if phi_khac != 0:
-                            ghi_chu_text = ""
-                            raw_gc = str(row[ghi_chu_col]).strip() if ghi_chu_col and pd.notna(row[ghi_chu_col]) else ""
-                            
-                            if raw_gc and raw_gc.lower() != 'nan':
-                                ghi_chu_text = f" <span style='font-size: 16px; font-style: italic; color: #a49688;'>({raw_gc})</span>"
-                                if phi_khac > 0 and any(kw in raw_gc.lower() for kw in ['trừ', 'nghỉ', 'giảm']):
-                                    phi_khac = -phi_khac
-
-                            d_color = "#bc6c65" if phi_khac > 0 else "#ff0000"
-                            d_sign = "+" if phi_khac > 0 else "-"
-                            
-                            tong_tien_goc_html = f'''
-                            <tr style="border-top: 1px dashed #e2d5c4; background: rgba(247,241,233,0.5);">
-                                <td style="padding: 12px 0; color: #7a6b5d; display:flex; align-items:center;">{svg_money} Thành tiền (Tiền học):</td>
-                                <td style="padding: 12px 0; font-weight: bold; color: #4a2e25; text-align: right;">{tong_tien_goc:,} đ</td>
-                            </tr>
-                            '''
-
-                            phi_khac_html = f'''
-                            <tr style="border-top: 1px dashed #e2d5c4;">
-                                <td style="padding: 15px 0; color: #7a6b5d; display:flex; align-items:center;">{svg_extra} Phí khác{ghi_chu_text}:</td>
-                                <td style="padding: 15px 0; font-weight: 900; color: {d_color}; text-align: right; font-size: 24px; font-family: 'Times New Roman', serif;">{d_sign} {abs(phi_khac):,} đ</td>
-                            </tr>
-                            '''
-                    except: pass
-            
-            tong_thanh_toan = tong_tien_goc + phi_khac
-            if tong_thanh_toan < 0: tong_thanh_toan = 0
-
-            raw_nhan_xet = row[nhan_xet_col] if nhan_xet_col else ""
-            nhan_xet = str(raw_nhan_xet).strip() if (pd.notna(raw_nhan_xet) and str(raw_nhan_xet).lower() != 'nan') else ""
-
-            bank_raw = str(row[ngan_hang_col]).strip() if ngan_hang_col and pd.notna(row[ngan_hang_col]) else "VCB"
-            bank_code = get_bank_code(bank_raw)
-            stk = clean_stk(row[stk_col]) if stk_col else ""
-
-            qr_html = ""
-            if bank_code and stk and bank_code != 'NAN':
-                add_info = urllib.parse.quote(ten)
-                qr_url = f"https://img.vietqr.io/image/{bank_code}-{stk}-compact2.png?amount={tong_thanh_toan}&addInfo={add_info}"
-                qr_html = f'<img src="{qr_url}" crossorigin="anonymous" style="width: 125px; height: 125px; border-radius: 10px;" alt="QR Code">'
-            else:
-                qr_html = '<div style="font-size:12px; color:#999; padding:40px 0; border:1px dashed #ccc; border-radius:8px; text-align:center;">CHƯA CÓ QR</div>'
-
-            receipt_html = f"""
-            <div class="receipt-card" data-name="{safe_name}" style="width: 850px; background: white; font-family: Arial, sans-serif; margin: 0 auto 40px auto; border-radius: 20px; overflow: hidden; box-sizing: border-box; position: relative;">
-                <div style="background: linear-gradient(135deg, #bc6c65 0%, #d49a71 100%); padding: 35px 50px; display: flex; align-items: center; justify-content: space-between; color: white;">
-                    <div style="width: 90px; height: 90px; border-radius: 50%; border: 3px solid white; background-color: #fff; overflow: hidden; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                        <img src="{logo_b64}" style="width: 100%; height: 100%; object-fit: cover;" alt="Logo">
-                    </div>
-                    <div style="text-align: center; flex-grow: 1; padding: 0 20px;">
-                        <div style="font-size: 16px; letter-spacing: 3px; font-weight: bold; opacity: 0.9; margin-bottom: 5px; text-transform: uppercase;">Lớp Nhạc Phím Hồng</div>
-                        <h1 style="margin: 0; font-size: 44px; font-weight: 900; letter-spacing: 2px; font-family: 'Times New Roman', Times, serif; text-transform: uppercase; text-shadow: 1px 1px 4px rgba(0,0,0,0.2);">Phiếu Học Phí</h1>
-                    </div>
-                    <div style="text-align: center; min-width: 180px;">
-                        <div style="font-size: 20px; font-weight: bold; margin-bottom: 8px;">{thang_nam_hien_thi}</div>
-                        <div style="font-size: 28px; font-weight: 900; background: rgba(255,255,255,0.25); padding: 10px 25px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.5); font-family: 'Times New Roman', Times, serif; text-transform: capitalize;">Lớp {lop}</div>
-                    </div>
-                </div>
-                <div style="padding: 40px 60px;">
-                    <div style="background: #fdfaf6; border: 1px solid #f2e2b3; border-radius: 15px; padding: 30px 45px; margin: 0 auto 35px auto; width: 85%;">
-                        <table style="width: 100%; border-collapse: collapse; font-size: 20px;">
-                            <tr>
-                                <td style="padding: 15px 0; color: #7a6b5d; display:flex; align-items:center;">{svg_student} Học sinh:</td>
-                                <td style="padding: 15px 0; font-weight: 900; color: #2c1a16; text-align: right; font-size: 30px; font-family: 'Times New Roman', Times, serif;">{ten}</td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 15px 0; color: #7a6b5d; display:flex; align-items:center; border-top: 1px dashed #e2d5c4;">{svg_receipt} {label_hoc_phi}:</td>
-                                <td style="padding: 15px 0; font-weight: bold; color: #2c1a16; text-align: right; border-top: 1px dashed #e2d5c4;">{hoc_phi_display:,} đ</td>
-                            </tr>
-                            <tr style="border-top: 1px dashed #e2d5c4;">
-                                <td style="padding: 15px 0; color: #7a6b5d; display:flex; align-items:center;">{svg_calendar} Số buổi học:</td>
-                                <td style="padding: 15px 0; font-weight: bold; color: #2c1a16; text-align: right;">{so_buoi} buổi</td>
-                            </tr>
-                            {tong_tien_goc_html}
-                            {phi_khac_html}
-                        </table>
-                    </div>
-                    <div style="display: flex; gap: 45px; align-items: flex-start; justify-content: center; width: 95%; margin: 0 auto;">
-                        <div style="flex: 1.3;">
-                            <div style="margin-bottom: 25px;">
-                                <div style="font-size: 14px; color: #8e7f72; font-weight: bold; letter-spacing: 1px; margin-bottom: 12px;">NGÀY ĐI HỌC</div>
-                                <div style="width: 100%;">{days_html}</div>
-                            </div>
-                            <div>
-                                <div style="font-size: 14px; color: #8e7f72; font-weight: bold; letter-spacing: 1px; margin-bottom: 12px;">NHẬN XÉT CỦA GIÁO VIÊN</div>
-                                <div style="background: #fffdf5; border: 1px solid #f2e2b3; border-radius: 12px; padding: 20px; color: #5a4b41; font-style: italic; line-height: 1.6; font-size: 16px; min-height: 20px;">
-                                    {nhan_xet}
-                                </div>
-                            </div>
-                        </div>
-                        <div style="flex: 0.7; display: flex; flex-direction: column; gap: 20px;">
-                            <div style="background: #fdf6ec; border: 2px solid #ecdac8; border-radius: 15px; padding: 20px; text-align: center;">
-                                <div style="font-size: 13px; color: #8e7f72; font-weight: bold;">TỔNG THANH TOÁN</div>
-                                <div style="font-size: 38px; color: #4a2e25; font-weight: 900; margin-top: 10px; font-family: 'Times New Roman', serif;">{tong_thanh_toan:,} đ</div>
-                            </div>
-                            <div style="background: white; border: 2px dashed #d49a71; border-radius: 15px; padding: 20px; text-align: center;">
-                                <div style="font-size: 11px; color: #d49a71; font-weight: bold; margin-bottom: 15px;">QUÉT MÃ THANH TOÁN</div>
-                                <div style="display: flex; justify-content: center;">{qr_html}</div>
-                                <div style="margin-top:
+                    thu
