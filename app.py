@@ -378,15 +378,16 @@ if uploaded_file:
             raw_nhan_xet = row[nhan_xet_col] if nhan_xet_col else ""
             nhan_xet = str(raw_nhan_xet).strip() if (pd.notna(raw_nhan_xet) and str(raw_nhan_xet).lower() != 'nan') else ""
 
-            bank_raw = str(row[ngan_hang_col]).strip() if ngan_hang_col and pd.notna(row[ngan_hang_col]) else "VCB"
+bank_raw = str(row[ngan_hang_col]).strip() if ngan_hang_col and pd.notna(row[ngan_hang_col]) else "VCB"
             bank_code = get_bank_code(bank_raw)
             stk = clean_stk(row[stk_col]) if stk_col else ""
 
             qr_html = ""
             if bank_code and stk and bank_code != 'NAN':
                 add_info = urllib.parse.quote(ten)
+                # Dùng trực tiếp URL ảnh VietQR để trình duyệt tự render, đảm bảo không bao giờ bị mất ảnh
                 qr_url = f"https://img.vietqr.io/image/{bank_code}-{stk}-compact2.png?amount={tong_thanh_toan}&addInfo={add_info}"
-                qr_html = f'<img src="{qr_url}" crossorigin="anonymous" style="width: 125px; height: 125px; border-radius: 10px;" alt="QR Code">'
+                qr_html = f'<img src="{qr_url}" style="width: 135px; height: 135px; border-radius: 10px; object-fit: contain;" alt="QR Code">'
             else:
                 qr_html = '<div style="font-size:12px; color:#999; padding:40px 0; border:1px dashed #ccc; border-radius:8px; text-align:center;">CHƯA CÓ QR</div>'
 
