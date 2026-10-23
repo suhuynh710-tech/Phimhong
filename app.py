@@ -164,12 +164,12 @@ if uploaded_file:
                 days_html = '<div style="color:#aaa; font-style:italic; font-size:14px; padding: 5px 0;">Chưa có dữ liệu điểm danh</div>'
             
             hoc_phi_buoi = clean_number(row[hp_buoi_col]) if hp_buoi_col else 0
-            hoc_phi = clean_number(row[hp_thang_col]) if hp_thang_col else 0
+            hoc_phi_thang = clean_number(row[hp_thang_col]) if hp_thang_col else 0
             
-            if hoc_phi > 0:
+            if hoc_phi_thang > 0:
                 label_hoc_phi = "Học phí"
-                hoc_phi_display = hoc_phi
-                tong_tien_goc = hoc_phi
+                hoc_phi_display = hoc_phi_thang
+                tong_tien_goc = hoc_phi_thang
             else:
                 label_hoc_phi = "Học phí (buổi)"
                 hoc_phi_display = hoc_phi_buoi
