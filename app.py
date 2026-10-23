@@ -12,7 +12,7 @@ st.set_page_config(page_title="Phím Hồng Music - PNG Generator", layout="wide
 LOGO_PATH = "PHÍM HỒNG MUSIC (Nền trắng).jpg"
 
 st.title("🎨 Cỗ Máy Xuất Ảnh PNG - Bản Phân Loại Học Phí")
-st.write("Đã sửa lỗi hiển thị mã QR thanh toán và tối ưu hóa tính toán.")
+st.write("Đã sửa hoàn toàn lỗi cú pháp f-string và định dạng STK / mã QR.")
 
 # --- KIỂM TRA FILE LOGO TRÊN SERVER (GITHUB) ---
 if not os.path.exists(LOGO_PATH):
@@ -306,7 +306,8 @@ if uploaded_file:
             """
             all_receipts_html += receipt_html
 
-        component_html = f"""
+        # SỬA LỖI SYNTAX ERROR: Dùng định dạng chuỗi bình thường kết hợp .replace() cho phần JS
+        component_js_template = """
         <!DOCTYPE html>
         <html lang="vi">
         <head>
@@ -316,6 +317,4 @@ if uploaded_file:
             <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
             <style>
                 body {{ font-family: Arial, sans-serif; text-align: center; margin: 0; padding: 20px; background: transparent; }}
-                .btn-export {{ background: linear-gradient(135deg, #bc6c65 0%, #d49a71 100%); color: white; border: none; padding: 25px 40px; font-size: 22px; border-radius: 15px; cursor: pointer; font-weight: bold; box-shadow: 0 8px 20px rgba(188, 108, 101, 0.4); transition: 0.3s; width: 100%; max-width: 600px; display: inline-flex; align-items: center; justify-content: center; gap: 15px; }}
-                .btn-export:hover {{ transform: scale(1.03); box-shadow: 0 10px 25px rgba(188, 108, 101, 0.6); }}
-                .btn-export:disabled {{ background: #ccc; cursor: not-allowed; transform
+                .btn-export {{ background: linear-gradient(135deg, #bc6c65 0%, #d49a71 100%); color: white; border: none; padding: 25px 40px; font-size: 22px; border-radius: 15px; cursor: pointer; font-weight: bold; box-shadow: 0 8px 20px rgba(188, 108, 101, 0.4); transition: 0.3s; width: 100%; max-width: 600px; display: inline
