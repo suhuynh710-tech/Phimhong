@@ -168,7 +168,7 @@ if uploaded_file:
             
             if hoc_phi_thang > 0:
                 label_hoc_phi = "Học phí"
-                hoc_phi_display = hoc_phi
+                hoc_phi_display = hoc_phi_thang
                 tong_tien_goc = hoc_phi
             else:
                 label_hoc_phi = "Học phí (buổi)"
