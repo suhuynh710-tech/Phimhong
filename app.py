@@ -170,7 +170,7 @@ if uploaded_file:
                 label_hoc_phi = "Học phí"
                 hoc_phi_display = hoc_phi
                 tong_tien_goc = hoc_phi
-            else
+            else:
                 label_hoc_phi = "Học phí (buổi)"
                 hoc_phi_display = hoc_phi_buoi
                 tong_tien_goc = hoc_phi_buoi * so_buoi
