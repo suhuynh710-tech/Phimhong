@@ -294,4 +294,109 @@ if uploaded_file:
                 
                 for _, att_row in present_rows.iterrows():
                     has_day = True
-                    thu
+                    thu = str(att_row[thu_col]).strip() if thu_col and pd.notna(att_row[thu_col]) else ":"
+                    ngay_val = att_row[ngay_col]
+                    
+                    if isinstance(ngay_val, (datetime.datetime, datetime.date)):
+                        day_month = ngay_val.strftime('%d/%m')
+                    else:
+                        s_date = str(ngay_val).strip().split(' ')[0]
+                        if '-' in s_date:
+                            try:
+                                p = s_date.split('-')
+                                day_month = f"{int(p[2]):02d}/{int(p[1]):02d}"
+                            except: day_month = s_date
+                        elif '/' in s_date:
+                            try:
+                                p = s_date.split('/')
+                                day_month = f"{int(p[0]):02d}/{int(p[1]):02d}"
+                            except: day_month = s_date
+                        else:
+                            day_month = s_date
+                    
+                    days_html += f'''
+                    <div style="background:#f7f1e9; border:1px solid #e0d1c1; border-radius:8px; padding:6px 12px; display:inline-block; text-align:center;">
+                        <div style="font-size:10px; color:#8e7f72; margin-bottom:2px; line-height:1;">{thu}</div>
+                        <div style="font-size:13px; font-weight:bold; color:#4a2e25; line-height:1;">{day_month}</div>
+                    </div>
+                    '''
+            days_html += '</div>'
+            if not has_day:
+                days_html = '<div style="color:#aaa; font-style:italic; font-size:14px; padding: 5px 0;">Chưa có dữ liệu điểm danh</div>'
+            
+            hoc_phi_buoi = clean_number(row[hp_buoi_col]) if hp_buoi_col else 0
+            hoc_phi_thang = clean_number(row[hp_thang_col]) if hp_thang_col else 0
+            
+            if hoc_phi_thang > 0:
+                label_hoc_phi = "Học phí"
+                hoc_phi_display = hoc_phi_thang
+                tong_tien_goc = hoc_phi_thang
+            else:
+                label_hoc_phi = "Học phí (buổi)"
+                hoc_phi_display = hoc_phi_buoi
+                tong_tien_goc = hoc_phi_buoi * so_buoi
+            
+            phi_khac = 0
+            phi_khac_html = ""
+            tong_tien_goc_html = ""
+            
+            if phi_khac_col:
+                val = row[phi_khac_col]
+                if pd.notna(val) and str(val).strip() != '':
+                    try:
+                        phi_khac = clean_number(val)
+                        if phi_khac != 0:
+                            ghi_chu_text = ""
+                            raw_gc = str(row[ghi_chu_col]).strip() if ghi_chu_col and pd.notna(row[ghi_chu_col]) else ""
+                            
+                            if raw_gc and raw_gc.lower() != 'nan':
+                                ghi_chu_text = f" <span style='font-size: 16px; font-style: italic; color: #a49688;'>({raw_gc})</span>"
+                                if phi_khac > 0 and any(kw in raw_gc.lower() for kw in ['trừ', 'nghỉ', 'giảm']):
+                                    phi_khac = -phi_khac
+
+                            d_color = "#bc6c65" if phi_khac > 0 else "#ff0000"
+                            d_sign = "+" if phi_khac > 0 else "-"
+                            
+                            tong_tien_goc_html = f'''
+                            <tr style="border-top: 1px dashed #e2d5c4; background: rgba(247,241,233,0.5);">
+                                <td style="padding: 12px 0; color: #7a6b5d; display:flex; align-items:center;">{svg_money} Thành tiền (Tiền học):</td>
+                                <td style="padding: 12px 0; font-weight: bold; color: #4a2e25; text-align: right;">{tong_tien_goc:,} đ</td>
+                            </tr>
+                            '''
+
+                            phi_khac_html = f'''
+                            <tr style="border-top: 1px dashed #e2d5c4;">
+                                <td style="padding: 15px 0; color: #7a6b5d; display:flex; align-items:center;">{svg_extra} Phí khác{ghi_chu_text}:</td>
+                                <td style="padding: 15px 0; font-weight: 900; color: {d_color}; text-align: right; font-size: 24px; font-family: 'Times New Roman', serif;">{d_sign} {abs(phi_khac):,} đ</td>
+                            </tr>
+                            '''
+                    except: pass
+            
+            tong_thanh_toan = tong_tien_goc + phi_khac
+            if tong_thanh_toan < 0: tong_thanh_toan = 0
+
+            raw_nhan_xet = row[nhan_xet_col] if nhan_xet_col else ""
+            nhan_xet = str(raw_nhan_xet).strip() if (pd.notna(raw_nhan_xet) and str(raw_nhan_xet).lower() != 'nan') else ""
+
+            bank_raw = str(row[ngan_hang_col]).strip() if ngan_hang_col and pd.notna(row[ngan_hang_col]) else "VCB"
+            bank_code = get_bank_code(bank_raw)
+            stk = clean_stk(row[stk_col]) if stk_col else ""
+
+            qr_html = ""
+            if bank_code and stk and bank_code != 'NAN':
+                add_info = urllib.parse.quote(ten)
+                qr_url = f"https://img.vietqr.io/image/{bank_code}-{stk}-compact2.png?amount={tong_thanh_toan}&addInfo={add_info}"
+                qr_html = f'<img src="{qr_url}" crossorigin="anonymous" style="width: 125px; height: 125px; border-radius: 10px;" alt="QR Code">'
+            else:
+                qr_html = '<div style="font-size:12px; color:#999; padding:40px 0; border:1px dashed #ccc; border-radius:8px; text-align:center;">CHƯA CÓ QR</div>'
+
+            receipt_html = get_receipt_html(
+                safe_name, logo_b64, thang_nam_hien_thi, lop, ten, 
+                label_hoc_phi, hoc_phi_display, so_buoi, days_html, 
+                nhan_xet, tong_tien_goc_html, phi_khac_html, 
+                tong_thanh_toan, qr_html, bank_raw, stk, 
+                svg_student, svg_receipt, svg_calendar, svg_thanks
+            )
+            all_receipts_html += receipt_html
+
+        components.html(get_component_html(all_receipts_html), height=250, scrolling=False)
