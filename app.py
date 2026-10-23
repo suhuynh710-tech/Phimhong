@@ -133,7 +133,7 @@ if uploaded_file:
                 
                 for _, att_row in present_rows.iterrows():
                     has_day = True
-                    thu = str(att_row[thu_col]).strip() if thu_col and pd.notna(att_row[thu_col]) else ""
+                    thu = str(att_row[thu_col]).strip() if thu_col and pd.notna(att_row[thu_col]) else ":"
                     ngay_val = att_row[ngay_col]
                     
                     if isinstance(ngay_val, (datetime.datetime, datetime.date)):
