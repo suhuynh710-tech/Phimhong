@@ -93,7 +93,7 @@ if uploaded_file:
         
         lop_col = next((col for col in df_students.columns if col.lower() == 'lớp'), None)
         hp_buoi_col = next((col for col in df_students.columns if 'học phí (buổi)' in col.lower()), None)
-        hp_thang_col = next((col for col in df_students.columns if 'học phí (tháng)' in col.lower()), None)
+        hp_thang_col = next((col for col in df_students.columns if 'học phí' in col.lower()), None)
         phi_khac_col = next((col for col in df_students.columns if 'phí khác' in col.lower()), None)
         ghi_chu_col = next((col for col in df_students.columns if 'ghi chú' in col.lower()), None)
         nhan_xet_col = next((col for col in df_students.columns if 'nhận xét của gv' in col.lower()), None)
@@ -167,10 +167,10 @@ if uploaded_file:
             hoc_phi_thang = clean_number(row[hp_thang_col]) if hp_thang_col else 0
             
             if hoc_phi_thang > 0:
-                label_hoc_phi = "Học phí (tháng)"
-                hoc_phi_display = hoc_phi_thang
-                tong_tien_goc = hoc_phi_thang
-            else:
+                label_hoc_phi = "Học phí"
+                hoc_phi_display = hoc_phi
+                tong_tien_goc = hoc_phi
+            else
                 label_hoc_phi = "Học phí (buổi)"
                 hoc_phi_display = hoc_phi_buoi
                 tong_tien_goc = hoc_phi_buoi * so_buoi
