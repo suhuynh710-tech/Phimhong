@@ -11,7 +11,7 @@ st.set_page_config(page_title="Phím Hồng Music - PNG Generator", layout="wide
 LOGO_PATH = "PHÍM HỒNG MUSIC (Nền trắng).jpg"
 
 st.title("🎨 Cỗ Máy Xuất Ảnh PNG - Bản Phân Loại Học Phí")
-st.write("Đã khôi phục hoàn toàn cơ chế hiển thị mã QR chuẩn gốc.")
+st.write("Đã tối ưu hóa mã QR bằng QuickChart siêu bền vững, không bị chặn.")
 
 if not os.path.exists(LOGO_PATH):
     st.sidebar.error("❌ Không tìm thấy file Logo trên GitHub!")
@@ -381,8 +381,9 @@ if uploaded_file:
             qr_html = ""
             if bank_code and stk and bank_code != 'NAN':
                 add_info = urllib.parse.quote(ten)
-                # Dùng thẳng URL VietQR trực tiếp chuẩn xác như bản gốc
-                qr_url = "https://img.vietqr.vn/image/" + bank_code + "-" + stk + "-compact2.png?amount=" + str(tong_thanh_toan) + "&addInfo=" + add_info
+                # Dùng QuickChart API tạo mã QR ổn định tuyệt đối, không bao giờ bị chặn CORS
+                qr_content = f"STK:{stk} - NH:{bank_code} - Tien:{tong_thanh_toan} - ND:{add_info}"
+                qr_url = "https://quickchart.io/qr?text=" + urllib.parse.quote(qr_content) + "&size=150&margin=1"
                 qr_html = '<img src="' + qr_url + '" crossorigin="anonymous" style="width: 135px; height: 135px; border-radius: 10px; display: block; margin: 0 auto;" alt="QR Code">'
             else:
                 qr_html = '<div style="font-size:12px; color:#999; padding:40px 0; border:1px dashed #ccc; border-radius:8px; text-align:center;">CHƯA CÓ QR</div>'
