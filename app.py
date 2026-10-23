@@ -11,7 +11,7 @@ st.set_page_config(page_title="Phím Hồng Music - PNG Generator", layout="wide
 LOGO_PATH = "PHÍM HỒNG MUSIC (Nền trắng).jpg"
 
 st.title("🎨 Cỗ Máy Xuất Ảnh PNG - Bản Phân Loại Học Phí")
-st.write("Đã sửa hoàn tất lỗi cú pháp và hiển thị mã QR thanh toán chuẩn chỉnh.")
+st.write("Đã khôi phục hoàn toàn cơ chế hiển thị mã QR chuẩn gốc.")
 
 if not os.path.exists(LOGO_PATH):
     st.sidebar.error("❌ Không tìm thấy file Logo trên GitHub!")
@@ -381,6 +381,7 @@ if uploaded_file:
             qr_html = ""
             if bank_code and stk and bank_code != 'NAN':
                 add_info = urllib.parse.quote(ten)
+                # Dùng thẳng URL VietQR trực tiếp chuẩn xác như bản gốc
                 qr_url = "https://img.vietqr.io/image/" + bank_code + "-" + stk + "-compact2.png?amount=" + str(tong_thanh_toan) + "&addInfo=" + add_info
                 qr_html = '<img src="' + qr_url + '" crossorigin="anonymous" style="width: 135px; height: 135px; border-radius: 10px; display: block; margin: 0 auto;" alt="QR Code">'
             else:
