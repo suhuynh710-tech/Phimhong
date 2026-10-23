@@ -12,11 +12,11 @@ st.set_page_config(page_title="Phím Hồng Music - PNG Generator", layout="wide
 LOGO_PATH = "PHÍM HỒNG MUSIC (Nền trắng).jpg"
 
 st.title("🎨 Cỗ Máy Xuất Ảnh PNG - Bản Phân Loại Học Phí")
-st.write("Đã vá lỗi thanh tiến trình và tối ưu hóa khả năng hiển thị ẩn của bộ dựng ảnh.")
+st.write("Đã sửa lỗi nhận diện cột Học Phí và tối ưu hóa tính toán tổng thanh toán.")
 
 # --- KIỂM TRA FILE LOGO TRÊN SERVER (GITHUB) ---
 if not os.path.exists(LOGO_PATH):
-    st.sidebar.error(f"❌ Không tìm thấy file: `{LOGO_PATH}`. Hãy kiểm tra lại tên file trên GitHub (chữ hoa/thường hoặc dấu tiếng Việt)!")
+    st.sidebar.error(f"❌ Không tìm thấy file: `{LOGO_PATH}`. Hãy kiểm tra lại tên file trên GitHub!")
 else:
     st.sidebar.success("✅ Đã kết nối file Logo thành công!")
 
@@ -93,7 +93,10 @@ if uploaded_file:
         
         lop_col = next((col for col in df_students.columns if col.lower() == 'lớp'), None)
         hp_buoi_col = next((col for col in df_students.columns if 'học phí (buổi)' in col.lower()), None)
-        hp_thang_col = next((col for col in df_students.columns if 'học phí' in col.lower()), None)
+        
+        # SỬA LỖI: Tìm chính xác cột 'học phí' tháng (loại trừ cột có chữ 'buổi' bên trong)
+        hp_thang_col = next((col for col in df_students.columns if col.lower() == 'học phí' or ('học phí' in col.lower() and 'buổi' not in col.lower())), None)
+        
         phi_khac_col = next((col for col in df_students.columns if 'phí khác' in col.lower()), None)
         ghi_chu_col = next((col for col in df_students.columns if 'ghi chú' in col.lower()), None)
         nhan_xet_col = next((col for col in df_students.columns if 'nhận xét của gv' in col.lower()), None)
@@ -237,7 +240,6 @@ if uploaded_file:
             if not qr_html:
                 qr_html = '<div style="font-size:12px; color:#999; padding:40px 0; border:1px dashed #ccc; border-radius:8px; text-align:center;">CHƯA CÓ QR</div>'
 
-            # --- THAY ĐỔI KHUNG LOGO SANG THẺ <img> ĐỂ ĐẢM BẢO HTML2CANVAS KHÔNG BỊ PHÔI TRẮNG ---
             receipt_html = f"""
             <div class="receipt-card" data-name="{safe_name}" style="width: 850px; background: white; font-family: Arial, sans-serif; margin: 0 auto 40px auto; border-radius: 20px; overflow: hidden; box-sizing: border-box; position: relative;">
                 <div style="background: linear-gradient(135deg, #bc6c65 0%, #d49a71 100%); padding: 35px 50px; display: flex; align-items: center; justify-content: space-between; color: white;">
