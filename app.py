@@ -1,7 +1,6 @@
 import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
-import requests
 import base64
 import urllib.parse
 import os
@@ -12,7 +11,7 @@ st.set_page_config(page_title="Phím Hồng Music - PNG Generator", layout="wide
 LOGO_PATH = "PHÍM HỒNG MUSIC (Nền trắng).jpg"
 
 st.title("🎨 Cỗ Máy Xuất Ảnh PNG - Bản Phân Loại Học Phí")
-st.write("Đã sửa hoàn toàn lỗi thụt lề cú pháp và hiển thị mã QR.")
+st.write("Đã sửa lỗi hiển thị mã QR thanh toán chuẩn VietQR.")
 
 # --- KIỂM TRA FILE LOGO TRÊN SERVER (GITHUB) ---
 if not os.path.exists(LOGO_PATH):
@@ -56,6 +55,32 @@ def clean_stk(val):
     if s.endswith('.0'):
         s = s[:-2]
     return s
+
+def get_bank_code(bank_name):
+    if not bank_name or pd.isna(bank_name):
+        return "VCB"
+    b = str(bank_name).strip().lower()
+    if 'vietcombank' in b or 'vcb' in b:
+        return "VCB"
+    elif 'techcombank' in b or 'tcb' in b:
+        return "TCB"
+    elif 'mbbank' in b or 'mb' in b:
+        return "MB"
+    elif 'acb' in b:
+        return "ACB"
+    elif 'agribank' in b:
+        return "AGRIBANK"
+    elif 'bidv' in b:
+        return "BIDV"
+    elif 'vietinbank' in b:
+        return "VIETINBANK"
+    elif 'tpbank' in b or 'tpb' in b:
+        return "TPB"
+    elif 'sacombank' in b:
+        return "SACOMBANK"
+    elif 'vpbank' in b:
+        return "VPB"
+    return str(bank_name).strip().upper()
 
 def get_component_html(receipts_html):
     return f"""
@@ -285,24 +310,16 @@ if uploaded_file:
             raw_nhan_xet = row[nhan_xet_col] if nhan_xet_col else ""
             nhan_xet = str(raw_nhan_xet).strip() if (pd.notna(raw_nhan_xet) and str(raw_nhan_xet).lower() != 'nan') else ""
 
-            bank = str(row[ngan_hang_col]).strip() if ngan_hang_col else ""
+            bank_raw = str(row[ngan_hang_col]).strip() if ngan_hang_col and pd.notna(row[ngan_hang_col]) else "VCB"
+            bank_code = get_bank_code(bank_raw)
             stk = clean_stk(row[stk_col]) if stk_col else ""
 
             qr_html = ""
-            if bank and stk and bank != 'nan':
+            if bank_code and stk and bank_code != 'NAN':
                 add_info = urllib.parse.quote(ten)
-                qr_url = f"https://img.vietqr.io/image/{bank}-{stk}-compact2.png?amount={tong_thanh_toan}&addInfo={add_info}"
-                try:
-                    resp = requests.get(qr_url, timeout=5)
-                    if resp.status_code == 200:
-                        qr_b64 = f"data:image/png;base64,{base64.b64encode(resp.content).decode('utf-8')}"
-                        qr_html = f'<img src="{qr_b64}" style="width: 125px; height: 125px; border-radius: 10px;">'
-                    else:
-                        qr_html = f'<img src="{qr_url}" style="width: 125px; height: 125px; border-radius: 10px;">'
-                except:
-                    qr_html = f'<img src="{qr_url}" style="width: 125px; height: 125px; border-radius: 10px;">'
-                
-            if not qr_html:
+                qr_url = f"https://img.vietqr.io/image/{bank_code}-{stk}-compact2.png?amount={tong_thanh_toan}&addInfo={add_info}"
+                qr_html = f'<img src="{qr_url}" crossorigin="anonymous" style="width: 125px; height: 125px; border-radius: 10px;" alt="QR Code">'
+            else:
                 qr_html = '<div style="font-size:12px; color:#999; padding:40px 0; border:1px dashed #ccc; border-radius:8px; text-align:center;">CHƯA CÓ QR</div>'
 
             receipt_html = f"""
@@ -360,17 +377,4 @@ if uploaded_file:
                             <div style="background: white; border: 2px dashed #d49a71; border-radius: 15px; padding: 20px; text-align: center;">
                                 <div style="font-size: 11px; color: #d49a71; font-weight: bold; margin-bottom: 15px;">QUÉT MÃ THANH TOÁN</div>
                                 <div style="display: flex; justify-content: center;">{qr_html}</div>
-                                <div style="margin-top: 15px; font-size: 18px; font-weight: 900; color: #bc6c65; text-transform: uppercase;">{bank if bank != 'nan' else ''}</div>
-                                <div style="font-size: 16px; font-weight: bold; color: #4a2e25; margin-top: 5px;">{stk if stk != 'nan' else ''}</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div style="text-align: center; margin-top: 55px; font-size: 17px; color: #9a8a7a; font-style: italic;">
-                        {svg_thanks} Trân trọng cảm ơn quý phụ huynh!
-                    </div>
-                </div>
-            </div>
-            """
-            all_receipts_html += receipt_html
-
-        components.html(get_component_html(all_receipts_html), height=250, scrolling=False)
+                                <div style="margin-top:
